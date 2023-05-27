@@ -66,56 +66,58 @@ LOOP:
 	}
 }
 
-//func ParseLines(parts <-chan []string) {
-//	wm := WorldMap{
-//		Cities: map[string]City{},
-//		Roads: map[string]chan Alien{},
-//	}
-//	for l := range lines {
-//		parts := strings.Split(l.Text, " ")
-//		if len(parts) < 2 {
-//			fmt.Printf("Line number: %d has wrong format. Expect something like 'Foo west=Bar north=Baz' got: %s\n", l.Number, l.Text)
-//			fmt.Println("Continue to the next line.")
-//			continue
-//		}
-//		c := City{Name: parts[0]}
-//
-//		for i, road := range parts[1:] {
-//			r := strings.Split(road, "=")
-//			if len(r) != 2 {
-//				fmt.Printf("On line %d the road number %d has wrong format. Expected something like 'west=Baz' got %s",l.Number, i, r)
-//				fmt.Println("continue to the next road")
-//				continue
-//			}
-//
-//			if strings.ToLower(r[0]) == "west" {
-//				ch := make(chan Alien)
-//				wm.Roads[fmt.Sprintf("%s-%s", "west", r[1])] = ch
-//				c.West = ch
-//			} else if strings.ToLower(r[0]) == "north" {
-//				ch := make(chan Alien)
-//				wm.Roads[fmt.Sprintf("%s-%s", c.Name, "nort")] = ch
-//				c.North = ch
-//			} else if strings.ToLower(r[0]) == "east" {
-//				ch := make(chan Alien)
-//				wm.Roads[fmt.Sprintf("%s-%s", c.Name, "east")] = ch
-//				c.East = ch
-//			} else if strings.ToLower(r[0]) == "south" {
-//				ch := make(chan Alien)
-//				wm.Roads[fmt.Sprintf("%s-%s", c.Name, "south")] = ch
-//				c.South = ch
-//			} else {
-//				fmt.Printf("On the line %d the road number %d has wrong direction. Expected 'west/north/east/south=Baz' got %s",l.Number, i, r[0])
-//				fmt.Println("continue to the next road")
-//				continue
-//			}
-//
-//
-//
-//
-//
-//
-//		}
-//		wm.Cities[c.Name] = c
-//	}
-//}
+func GenerateWorldMap(parts <-chan []string, done <-chan struct{}) WorldMap {
+	wm := WorldMap{
+		Cities: map[string]City{},
+		Roads:  map[string]chan Alien{},
+	}
+	for {
+		var p []string
+		select {
+		case <-done:
+			return wm
+		case p = <-parts:
+			// the world map is still not generated
+		}
+
+		city := City{Name: p[0]}
+		for _, r := range p[1:] {
+			road := strings.ToLower(r)
+			rp := strings.Split(road, "=")
+
+			if strings.ToLower(rp[0]) == "west" {
+				ch := make(chan Alien)
+				a, ok := wm.Roads["east="+rp[1]]
+				if ok {
+					ch = a
+				}
+				city.West = ch
+			} else if strings.ToLower(rp[0]) == "north" {
+				ch := make(chan Alien)
+				a, ok := wm.Roads["south="+rp[1]]
+				if ok {
+					ch = a
+				}
+				wm.Roads[road] = ch
+				city.North = ch
+			} else if strings.ToLower(rp[0]) == "east" {
+				ch := make(chan Alien)
+				a, ok := wm.Roads["west="+rp[1]]
+				if ok {
+					ch = a
+				}
+				wm.Roads[road] = ch
+				city.East = ch
+			} else if strings.ToLower(rp[0]) == "south" {
+				ch := make(chan Alien)
+				a, ok := wm.Roads["north="+rp[1]]
+				if ok {
+					ch = a
+				}
+				wm.Roads[road] = ch
+				city.South = ch
+			}
+		}
+		wm.Cities[city.Name] = city
+	}
+}

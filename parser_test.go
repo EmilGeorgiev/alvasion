@@ -46,6 +46,8 @@ func TestReadLines(t *testing.T) {
 	assert.False(t, ok) // assert that the channel is closed
 }
 
+// Test cases for Validate Lines
+
 func TestValidateCorrectLines(t *testing.T) {
 	// SETUP
 	lines := make(chan alvasion.Line)
@@ -287,6 +289,40 @@ func TestValidateLinesWithWrongRoadDirection(t *testing.T) {
 
 	assert.Equal(t, actualPartsForLine5, []string{"Nzas", "west=Jett"})
 	assert.Equal(t, expectedErrs, actualErrs)
+}
+
+// Test cases for Generate Word Map
+func TestGenerateWorldMap(t *testing.T) {
+	// SETUP
+	parts := make(chan []string)
+	done := make(chan struct{})
+	var wm alvasion.WorldMap
+
+	// ACTION
+	go func() {
+		parts <- []string{"Foo", "west=Baz", "east=Boo", "north=Zerty", "south=Hepp"}
+		parts <- []string{"Baz", "east=Foo", "west=Nzas", "north=Lkert", "south=Jjer"}
+		parts <- []string{"Nzas", "west=Jett", "east=Baz", "north=Poelk", "south=Xols"}
+		parts <- []string{"Poelk", "west=Kass", "east=Zass", "north=Pass", "south=Nzas"}
+		parts <- []string{"Kk", "west=Hh", "east=Ll", "north=Nn", "south=Pp"}
+		close(done)
+	}()
+
+	wm = alvasion.GenerateWorldMap(parts, done)
+
+	// ASSERTION
+	_, okFoo := wm.Cities["Foo"]
+	_, okBaz := wm.Cities["Baz"]
+	_, okNzas := wm.Cities["Nzas"]
+	_, okPoelk := wm.Cities["Poelk"]
+	_, okKk := wm.Cities["Kk"]
+
+	assert.Equal(t, 5, len(wm.Cities))
+	assert.True(t, okFoo)
+	assert.True(t, okBaz)
+	assert.True(t, okNzas)
+	assert.True(t, okPoelk)
+	assert.True(t, okKk)
 }
 
 func createFileWithLines(fileName string, lines []string) {
