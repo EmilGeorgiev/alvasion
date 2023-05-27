@@ -32,38 +32,36 @@ func ReadLines(fileName string, lines chan<- Line) error {
 	return nil
 }
 
-func ValidateLines(lines <-chan Line, p chan<- []string) {
+func ValidateLines(lines <-chan Line, p chan<- []string, errs chan<- error) {
+LOOP:
 	for l := range lines {
 		parts := strings.Split(l.Text, " ")
 		if len(parts) < 2 {
-			fmt.Printf("Line number: %d has wrong format. Expect something like 'Foo west=Bar north=Baz' got: %s\n", l.Number, l.Text)
-			fmt.Println("Continue to the next line.")
+			errs <- fmt.Errorf("line number: %d has wrong format. A line should contains a city name and at least "+
+				"one road that leading out of the city. Expect something like 'Foo west=Bar north=Baz' got: %s\n", l.Number, l.Text)
 			continue
 		}
 
-		var numberOfValidRoads int
+		if len(parts) > 5 {
+			errs <- fmt.Errorf("line number: %d has wrong format. A line should contains a city name and maximum "+
+				"4 road that leading out of the city. Expect something like 'Foo west=Bar north=Baz' got: %s\n", l.Number, l.Text)
+			continue
+		}
+
 		for i, road := range parts[1:] {
 			r := strings.Split(road, "=")
 			if len(r) != 2 {
-				fmt.Printf("On line %d the road number %d has wrong format. Expected something like 'west=Baz' got %s", l.Number, i, r)
-				fmt.Println("continue to the next road")
-				continue
+				errs <- fmt.Errorf("on line %d the road number %d has wrong format. Expected something like 'west=Baz' got %s", l.Number, i+1, road)
+				continue LOOP
 			}
 
 			rl := strings.ToLower(r[0])
 			if rl != "west" && rl != "north" && rl != "east" && rl != "south" {
-				fmt.Printf("On the line %d the road number %d has wrong direction. Expected 'west/north/east/south' got %s", l.Number, i, r[0])
-				fmt.Println("continue to the next road")
-				continue
+				errs <- fmt.Errorf("on the line %d the road number %d has wrong direction. Expected 'west/north/east/south' got %s", l.Number, i+1, r[0])
+				continue LOOP
 			}
-			numberOfValidRoads++
 		}
 
-		if numberOfValidRoads == 0 {
-			fmt.Printf("Line number: %d has zero valid roads leading out of the city. A city is expect to has at least one. Here is the line: %s\n", l.Number, l.Text)
-			fmt.Println("Continue to the next line.")
-			continue
-		}
 		p <- parts
 	}
 }
