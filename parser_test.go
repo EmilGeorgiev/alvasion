@@ -23,11 +23,7 @@ func TestReadLines(t *testing.T) {
 	lines := make(chan alvasion.Line)
 
 	// ACTION
-	go func() {
-		if err := alvasion.ReadLines("world-map.txt", lines); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	go alvasion.ReadLines("world-map.txt", lines)
 
 	actualLine1 := <-lines
 	actualLine2 := <-lines
@@ -295,7 +291,6 @@ func TestValidateLinesWithWrongRoadDirection(t *testing.T) {
 func TestGenerateWorldMap(t *testing.T) {
 	// SETUP
 	parts := make(chan []string)
-	done := make(chan struct{})
 	var wm alvasion.WorldMap
 
 	// ACTION
@@ -305,10 +300,10 @@ func TestGenerateWorldMap(t *testing.T) {
 		parts <- []string{"Nzas", "west=Jett", "east=Baz", "north=Poelk", "south=Xols"}
 		parts <- []string{"Poelk", "west=Kass", "east=Zass", "north=Pass", "south=Nzas"}
 		parts <- []string{"Kk", "west=Hh", "east=Ll", "north=Nn", "south=Pp"}
-		close(done)
+		close(parts)
 	}()
 
-	wm = alvasion.GenerateWorldMap(parts, done)
+	wm = alvasion.GenerateWorldMap(parts)
 
 	// ASSERTION
 	_, okFoo := wm.Cities["Foo"]

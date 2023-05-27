@@ -12,10 +12,10 @@ type Line struct {
 	Number int64
 }
 
-func ReadLines(fileName string, lines chan<- Line) error {
+func ReadLines(fileName string, lines chan<- Line) {
 	file, err := os.Open(fileName)
 	if err != nil {
-		return fmt.Errorf("failed to open file: %s", err)
+		panic(err)
 	}
 	defer file.Close()
 
@@ -29,7 +29,6 @@ func ReadLines(fileName string, lines chan<- Line) error {
 		lines <- Line{Text: line, Number: lineNumber}
 	}
 	close(lines)
-	return nil
 }
 
 func ValidateLines(lines <-chan Line, p chan<- []string, errs chan<- error) {
@@ -66,20 +65,12 @@ LOOP:
 	}
 }
 
-func GenerateWorldMap(parts <-chan []string, done <-chan struct{}) WorldMap {
+func GenerateWorldMap(parts <-chan []string) WorldMap {
 	wm := WorldMap{
 		Cities: map[string]City{},
 		Roads:  map[string]chan Alien{},
 	}
-	for {
-		var p []string
-		select {
-		case <-done:
-			return wm
-		case p = <-parts:
-			// the world map is still not generated
-		}
-
+	for p := range parts {
 		city := City{Name: p[0]}
 		for _, r := range p[1:] {
 			road := strings.ToLower(r)
@@ -120,4 +111,5 @@ func GenerateWorldMap(parts <-chan []string, done <-chan struct{}) WorldMap {
 		}
 		wm.Cities[city.Name] = city
 	}
+	return wm
 }

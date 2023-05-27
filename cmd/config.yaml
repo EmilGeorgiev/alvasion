@@ -1,0 +1,2 @@
+world_map: world_map.txt
+validation_workers: 5
