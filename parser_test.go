@@ -291,21 +291,22 @@ func TestValidateLinesWithWrongRoadDirection(t *testing.T) {
 func TestGenerateWorldMap(t *testing.T) {
 	// SETUP
 	cases := []struct {
-		Name       string
-		NorthIsNil bool
-		SouthIsNil bool
-		EastIsNil  bool
-		WestIsNil  bool
+		Name               string
+		NorthIsNil         bool
+		SouthIsNil         bool
+		EastIsNil          bool
+		WestIsNil          bool
+		OutgoingRoadsNames []string
 	}{
-		{Name: "X1", NorthIsNil: true, SouthIsNil: false, EastIsNil: false, WestIsNil: true},
-		{Name: "X2", NorthIsNil: true, SouthIsNil: false, EastIsNil: false, WestIsNil: false},
-		{Name: "X3", NorthIsNil: true, SouthIsNil: false, EastIsNil: true, WestIsNil: false},
-		{Name: "X4", NorthIsNil: false, SouthIsNil: false, EastIsNil: false, WestIsNil: true},
-		{Name: "X5", NorthIsNil: false, SouthIsNil: false, EastIsNil: false, WestIsNil: false},
-		{Name: "X6", NorthIsNil: false, SouthIsNil: false, EastIsNil: true, WestIsNil: false},
-		{Name: "X7", NorthIsNil: false, SouthIsNil: true, EastIsNil: false, WestIsNil: true},
-		{Name: "X8", NorthIsNil: false, SouthIsNil: true, EastIsNil: false, WestIsNil: false},
-		{Name: "X9", NorthIsNil: false, SouthIsNil: true, EastIsNil: true, WestIsNil: false},
+		{Name: "X1", NorthIsNil: true, SouthIsNil: false, EastIsNil: false, WestIsNil: true, OutgoingRoadsNames: []string{"", "south=X4", "east=X2", ""}},
+		{Name: "X2", NorthIsNil: true, SouthIsNil: false, EastIsNil: false, WestIsNil: false, OutgoingRoadsNames: []string{"", "south=X5", "east=X3", "west=X1"}},
+		{Name: "X3", NorthIsNil: true, SouthIsNil: false, EastIsNil: true, WestIsNil: false, OutgoingRoadsNames: []string{"", "south=X6", "", "west=X2"}},
+		{Name: "X4", NorthIsNil: false, SouthIsNil: false, EastIsNil: false, WestIsNil: true, OutgoingRoadsNames: []string{"north=X1", "south=X7", "east=X5", ""}},
+		{Name: "X5", NorthIsNil: false, SouthIsNil: false, EastIsNil: false, WestIsNil: false, OutgoingRoadsNames: []string{"north=X2", "south=X8", "east=X6", "west=X4"}},
+		{Name: "X6", NorthIsNil: false, SouthIsNil: false, EastIsNil: true, WestIsNil: false, OutgoingRoadsNames: []string{"north=X3", "south=X9", "", "west=X5"}},
+		{Name: "X7", NorthIsNil: false, SouthIsNil: true, EastIsNil: false, WestIsNil: true, OutgoingRoadsNames: []string{"north=X4", "", "east=X8", ""}},
+		{Name: "X8", NorthIsNil: false, SouthIsNil: true, EastIsNil: false, WestIsNil: false, OutgoingRoadsNames: []string{"north=X5", "", "east=X9", "west=X7"}},
+		{Name: "X9", NorthIsNil: false, SouthIsNil: true, EastIsNil: true, WestIsNil: false, OutgoingRoadsNames: []string{"north=X6", "", "", "west=X8"}},
 	}
 	// 0 (north), 1 (south), 2 (east), 3 (west)
 	parts := make(chan []string)
@@ -330,6 +331,8 @@ func TestGenerateWorldMap(t *testing.T) {
 	for _, c := range cases {
 		t.Run("Assert "+c.Name, func(t *testing.T) {
 			assert.Equal(t, c.Name, wm.Cities[c.Name].Name)
+			assert.Equal(t, c.OutgoingRoadsNames, wm.Cities[c.Name].OutgoingRoadsNames)
+			
 			assert.Equal(t, c.NorthIsNil, wm.Cities[c.Name].OutgoingRoads[0] == nil)
 			assert.Equal(t, c.NorthIsNil, wm.Cities[c.Name].IncomingRoads[0] == nil)
 

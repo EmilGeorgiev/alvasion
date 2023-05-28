@@ -85,6 +85,7 @@ func TestEvaluateCityDestructionWhenOneAlienVisitTheCity(t *testing.T) {
 	}
 	assert.Equal(t, expected, actual)
 	assert.Equal(t, 1, len(c.IncomingRoads))
+	assert.Equal(t, a, c.Alien)
 }
 
 func TestEvaluateCityDestructionWhenTwoAliensVisitTheCity(t *testing.T) {
@@ -195,9 +196,10 @@ func TestEvaluateRoadsDestructionWhenZeroRoadsAreDestroyed(t *testing.T) {
 	eastIn := make(chan alvasion.Alien, 1)
 	westIn := make(chan alvasion.Alien, 1)
 	c := alvasion.City{
-		Name:          "Foo",
-		OutgoingRoads: []chan alvasion.Alien{northOut, southOut, eastOut, westOut},
-		IncomingRoads: []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
+		Name:               "Foo",
+		OutgoingRoads:      []chan alvasion.Alien{northOut, southOut, eastOut, westOut},
+		IncomingRoads:      []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
+		OutgoingRoadsNames: []string{"north=X1", "south=X2", "east=X3", "west=X4"},
 	}
 	wg := sync.WaitGroup{}
 
@@ -215,6 +217,8 @@ func TestEvaluateRoadsDestructionWhenZeroRoadsAreDestroyed(t *testing.T) {
 	c.IncomingRoads[1] <- alvasion.Alien{}
 	c.IncomingRoads[2] <- alvasion.Alien{}
 	c.IncomingRoads[3] <- alvasion.Alien{}
+
+	assert.Equal(t, []string{"north=X1", "south=X2", "east=X3", "west=X4"}, c.OutgoingRoadsNames)
 }
 
 func TestEvaluateRoadsDestructionWhenOneRoadsIsDestroyed(t *testing.T) {
@@ -228,9 +232,10 @@ func TestEvaluateRoadsDestructionWhenOneRoadsIsDestroyed(t *testing.T) {
 	eastIn := make(chan alvasion.Alien, 1)
 	westIn := make(chan alvasion.Alien, 1)
 	c := alvasion.City{
-		Name:          "Foo",
-		OutgoingRoads: []chan alvasion.Alien{northOut, southOut, eastOut, westOut},
-		IncomingRoads: []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
+		Name:               "Foo",
+		OutgoingRoads:      []chan alvasion.Alien{northOut, southOut, eastOut, westOut},
+		IncomingRoads:      []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
+		OutgoingRoadsNames: []string{"north=X1", "south=X2", "east=X3", "west=X4"},
 	}
 	wg := sync.WaitGroup{}
 
@@ -250,6 +255,7 @@ func TestEvaluateRoadsDestructionWhenOneRoadsIsDestroyed(t *testing.T) {
 
 	assert.Nil(t, c.IncomingRoads[0])
 	assert.Nil(t, c.OutgoingRoads[0])
+	assert.Equal(t, []string{"", "south=X2", "east=X3", "west=X4"}, c.OutgoingRoadsNames)
 }
 
 func TestEvaluateRoadsDestructionWhenAllRoadsAreDestroyed(t *testing.T) {
@@ -262,9 +268,10 @@ func TestEvaluateRoadsDestructionWhenAllRoadsAreDestroyed(t *testing.T) {
 	eastIn := make(chan alvasion.Alien, 1)
 	westIn := make(chan alvasion.Alien, 1)
 	c := alvasion.City{
-		Name:          "Foo",
-		OutgoingRoads: []chan alvasion.Alien{northOut, southOut, eastOut, westOut},
-		IncomingRoads: []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
+		Name:               "Foo",
+		OutgoingRoads:      []chan alvasion.Alien{northOut, southOut, eastOut, westOut},
+		IncomingRoads:      []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
+		OutgoingRoadsNames: []string{"north=X1", "south=X2", "east=X3", "west=X4"},
 	}
 	wg := sync.WaitGroup{}
 
@@ -281,4 +288,5 @@ func TestEvaluateRoadsDestructionWhenAllRoadsAreDestroyed(t *testing.T) {
 	expectedOutgoing := make([]chan alvasion.Alien, 4)
 	assert.Equal(t, expectedIncoming, c.IncomingRoads)
 	assert.Equal(t, expectedOutgoing, c.OutgoingRoads)
+	assert.Equal(t, []string{"", "", "", ""}, c.OutgoingRoadsNames)
 }

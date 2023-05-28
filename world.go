@@ -12,15 +12,19 @@ type WorldMap struct {
 
 func (wm WorldMap) CleanCity(name string) {
 	c, ok := wm.Cities[name]
-	if !ok {
+	if !ok || c.IsDestroyed {
 		return
 	}
 	c.IsDestroyed = true
 
 	// destroy and all roads leading out and in to the city
-	for _, r := range c.OutgoingRoads {
+	for i, r := range c.OutgoingRoads {
+		if r == nil {
+			continue
+		}
 		// we can close the channel safely because
 		close(r)
+		c.OutgoingRoads[i] = nil
 	}
 }
 
@@ -32,11 +36,12 @@ type Road struct {
 // City for simplicity we will add a convention that the in/out roads North, South, East,
 // and West will be always in slace's indexes 0 (north), 1 (south), 2 (east), 3 (west).
 type City struct {
-	Name          string
-	OutgoingRoads []chan Alien
-	IncomingRoads []chan Alien
-	IsDestroyed   bool
-	Alien         Alien
+	Name               string
+	OutgoingRoads      []chan Alien
+	IncomingRoads      []chan Alien
+	IsDestroyed        bool
+	Alien              Alien
+	OutgoingRoadsNames []string
 }
 
 // EvaluateCityDestruction ..
@@ -66,9 +71,11 @@ func EvaluateCityDestruction(c *City, wg *sync.WaitGroup) {
 				a.Sitreps <- Sitrep{From: a.ID, CityName: c.Name, IsCityDestroyed: true}
 			}
 			fmt.Println(msg[:len(msg)-11] + "!")
+			return
 		}
 
 		a := aliens[0]
+		c.Alien = a
 		a.Sitreps <- Sitrep{From: a.ID, CityName: c.Name, IsCityDestroyed: false}
 	}()
 }
@@ -87,6 +94,7 @@ func EvaluateRoadsDestruction(c *City, wg *sync.WaitGroup) {
 					// list with roads that leading in and out of the city
 					c.IncomingRoads[i] = nil
 					c.OutgoingRoads[i] = nil
+					c.OutgoingRoadsNames[i] = ""
 				}
 			default:
 

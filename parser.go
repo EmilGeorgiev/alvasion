@@ -72,9 +72,10 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 	}
 	for p := range parts {
 		city := &City{
-			Name:          p[0],
-			IncomingRoads: make([]chan Alien, 4),
-			OutgoingRoads: make([]chan Alien, 4),
+			Name:               p[0],
+			IncomingRoads:      make([]chan Alien, 4),
+			OutgoingRoads:      make([]chan Alien, 4),
+			OutgoingRoadsNames: make([]string, 4),
 		}
 		for _, r := range p[1:] {
 			rp := strings.Split(r, "=")
@@ -83,6 +84,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 			if strings.ToLower(rp[0]) == "north" {
 				outgoing := make(chan Alien, 1)
 				city.OutgoingRoads[0] = outgoing
+				city.OutgoingRoadsNames[0] = r
 				//wm.Roads[road] = outgoing
 
 				cityOnNorth, ok := wm.Cities[rp[1]]
@@ -93,6 +95,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 			} else if strings.ToLower(rp[0]) == "south" {
 				outgoing := make(chan Alien, 1)
 				city.OutgoingRoads[1] = outgoing
+				city.OutgoingRoadsNames[1] = r
 				//wm.Roads[road] = outgoing
 
 				cityOnSouth, ok := wm.Cities[rp[1]]
@@ -103,6 +106,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 			} else if strings.ToLower(rp[0]) == "east" {
 				outgoing := make(chan Alien, 1)
 				city.OutgoingRoads[2] = outgoing
+				city.OutgoingRoadsNames[2] = r
 				//wm.Roads[road] = outgoing
 
 				cityOnEast, ok := wm.Cities[rp[1]]
@@ -113,6 +117,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 			} else if strings.ToLower(rp[0]) == "west" {
 				outgoing := make(chan Alien, 1)
 				city.OutgoingRoads[3] = outgoing
+				city.OutgoingRoadsNames[3] = r
 				//wm.Roads[road] = outgoing
 
 				cityOnWest, ok := wm.Cities[rp[1]]
