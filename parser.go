@@ -67,11 +67,11 @@ LOOP:
 
 func GenerateWorldMap(parts <-chan []string) WorldMap {
 	wm := WorldMap{
-		Cities: map[string]City{},
+		Cities: map[string]*City{},
 		Roads:  map[string]chan Alien{},
 	}
 	for p := range parts {
-		city := City{Name: p[0]}
+		city := &City{Name: p[0]}
 		for _, r := range p[1:] {
 			road := strings.ToLower(r)
 			rp := strings.Split(road, "=")
