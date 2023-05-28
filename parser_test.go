@@ -290,34 +290,112 @@ func TestValidateLinesWithWrongRoadDirection(t *testing.T) {
 // Test cases for Generate Word Map
 func TestGenerateWorldMap(t *testing.T) {
 	// SETUP
+	cases := []struct {
+		Name       string
+		NorthIsNil bool
+		SouthIsNil bool
+		EastIsNil  bool
+		WestIsNil  bool
+	}{
+		{Name: "X1", NorthIsNil: true, SouthIsNil: false, EastIsNil: false, WestIsNil: true},
+		{Name: "X2", NorthIsNil: true, SouthIsNil: false, EastIsNil: false, WestIsNil: false},
+		{Name: "X3", NorthIsNil: true, SouthIsNil: false, EastIsNil: true, WestIsNil: false},
+		{Name: "X4", NorthIsNil: false, SouthIsNil: false, EastIsNil: false, WestIsNil: true},
+		{Name: "X5", NorthIsNil: false, SouthIsNil: false, EastIsNil: false, WestIsNil: false},
+		{Name: "X6", NorthIsNil: false, SouthIsNil: false, EastIsNil: true, WestIsNil: false},
+		{Name: "X7", NorthIsNil: false, SouthIsNil: true, EastIsNil: false, WestIsNil: true},
+		{Name: "X8", NorthIsNil: false, SouthIsNil: true, EastIsNil: false, WestIsNil: false},
+		{Name: "X9", NorthIsNil: false, SouthIsNil: true, EastIsNil: true, WestIsNil: false},
+	}
+	// 0 (north), 1 (south), 2 (east), 3 (west)
 	parts := make(chan []string)
 	var wm alvasion.WorldMap
 
 	// ACTION
 	go func() {
-		parts <- []string{"Foo", "west=Baz", "east=Boo", "north=Zerty", "south=Hepp"}
-		parts <- []string{"Baz", "east=Foo", "west=Nzas", "north=Lkert", "south=Jjer"}
-		parts <- []string{"Nzas", "west=Jett", "east=Baz", "north=Poelk", "south=Xols"}
-		parts <- []string{"Poelk", "west=Kass", "east=Zass", "north=Pass", "south=Nzas"}
-		parts <- []string{"Kk", "west=Hh", "east=Ll", "north=Nn", "south=Pp"}
+		parts <- []string{"X1", "east=X2", "south=X4"}
+		parts <- []string{"X2", "east=X3", "west=X1", "south=X5"}
+		parts <- []string{"X3", "west=X2", "south=X6"}
+		parts <- []string{"X4", "east=X5", "north=X1", "south=X7"}
+		parts <- []string{"X5", "west=X4", "east=X6", "north=X2", "south=X8"}
+		parts <- []string{"X6", "west=X5", "north=X3", "south=X9"}
+		parts <- []string{"X7", "east=X8", "north=X4"}
+		parts <- []string{"X8", "west=X7", "east=X9", "north=X5"}
+		parts <- []string{"X9", "west=X8", "north=X6"}
 		close(parts)
 	}()
-
 	wm = alvasion.GenerateWorldMap(parts)
 
-	// ASSERTION
-	_, okFoo := wm.Cities["Foo"]
-	_, okBaz := wm.Cities["Baz"]
-	_, okNzas := wm.Cities["Nzas"]
-	_, okPoelk := wm.Cities["Poelk"]
-	_, okKk := wm.Cities["Kk"]
+	// ASSERTIONS
+	for _, c := range cases {
+		t.Run("Assert "+c.Name, func(t *testing.T) {
+			assert.Equal(t, c.Name, wm.Cities[c.Name].Name)
+			assert.Equal(t, c.NorthIsNil, wm.Cities[c.Name].OutgoingRoads[0] == nil)
+			assert.Equal(t, c.NorthIsNil, wm.Cities[c.Name].IncomingRoads[0] == nil)
 
-	assert.Equal(t, 5, len(wm.Cities))
-	assert.True(t, okFoo)
-	assert.True(t, okBaz)
-	assert.True(t, okNzas)
-	assert.True(t, okPoelk)
-	assert.True(t, okKk)
+			assert.Equal(t, c.SouthIsNil, wm.Cities[c.Name].OutgoingRoads[1] == nil)
+			assert.Equal(t, c.SouthIsNil, wm.Cities[c.Name].IncomingRoads[1] == nil)
+
+			assert.Equal(t, c.EastIsNil, wm.Cities[c.Name].OutgoingRoads[2] == nil)
+			assert.Equal(t, c.EastIsNil, wm.Cities[c.Name].IncomingRoads[2] == nil)
+
+			assert.Equal(t, c.WestIsNil, wm.Cities[c.Name].OutgoingRoads[3] == nil)
+			assert.Equal(t, c.WestIsNil, wm.Cities[c.Name].IncomingRoads[3] == nil)
+		})
+	}
+	assert.Equal(t, 9, len(wm.Cities))
+}
+
+func TestGenerateWorldMapConnectProperlyCitiesOnDirectionNorthSouth(t *testing.T) {
+	// SETUP
+
+	// 0 (north), 1 (south), 2 (east), 3 (west)
+	parts := make(chan []string)
+
+	// ACTION
+	go func() {
+		parts <- []string{"X1", "south=X4"}
+		parts <- []string{"X4", "north=X1"}
+		close(parts)
+	}()
+	wm := alvasion.GenerateWorldMap(parts)
+	expectedAlien1 := alvasion.Alien{ID: 1}
+	wm.Cities["X1"].OutgoingRoads[1] <- expectedAlien1
+	actualAlien1 := <-wm.Cities["X4"].IncomingRoads[0]
+
+	expectedAlien2 := alvasion.Alien{ID: 2}
+	wm.Cities["X4"].OutgoingRoads[0] <- expectedAlien2
+	actualAlien2 := <-wm.Cities["X1"].IncomingRoads[1]
+
+	// ASSERTIONS
+	assert.Equal(t, expectedAlien1, actualAlien1)
+	assert.Equal(t, expectedAlien2, actualAlien2)
+}
+
+func TestGenerateWorldMapConnectProperlyCitiesOnDirectionEastWest(t *testing.T) {
+	// SETUP
+
+	// 0 (north), 1 (south), 2 (east), 3 (west)
+	parts := make(chan []string)
+
+	// ACTION
+	go func() {
+		parts <- []string{"X1", "east=X2"}
+		parts <- []string{"X2", "west=X1"}
+		close(parts)
+	}()
+	wm := alvasion.GenerateWorldMap(parts)
+	expectedAlien1 := alvasion.Alien{ID: 1}
+	wm.Cities["X1"].OutgoingRoads[2] <- expectedAlien1
+	actualAlien1 := <-wm.Cities["X2"].IncomingRoads[3]
+
+	expectedAlien2 := alvasion.Alien{ID: 2}
+	wm.Cities["X2"].OutgoingRoads[3] <- expectedAlien2
+	actualAlien2 := <-wm.Cities["X1"].IncomingRoads[2]
+
+	// ASSERTIONS
+	assert.Equal(t, expectedAlien1, actualAlien1)
+	assert.Equal(t, expectedAlien2, actualAlien2)
 }
 
 func createFileWithLines(fileName string, lines []string) {

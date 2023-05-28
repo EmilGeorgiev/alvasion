@@ -18,26 +18,26 @@ type AlienCommander struct {
 	wg            sync.WaitGroup
 }
 
-func (ac *AlienCommander) GiveOrdersToTheAlienIn(c City) {
+func (ac *AlienCommander) giveOrdersToTheAlienIn(c City) {
 	// if in the city there is an alien, then the commander will give orders to him
 	if c.Alien.Sitreps == nil {
 		return
 	}
 
 	// The commander selects a random active outgoing road and orders the alien to take that road.
-	i := rand.Intn(len(c.Roads))
-	c.Roads[i] <- c.Alien
+	i := rand.Intn(len(c.OutgoingRoads))
+	c.OutgoingRoads[i] <- c.Alien
 }
 
-func (ac *AlienCommander) StartNextIteration() {
+func (ac *AlienCommander) startNextIteration() {
 	wg := sync.WaitGroup{}
 	// give orders to all soldiers
 	for _, city := range ac.WorldMap.Cities {
-		ac.GiveOrdersToTheAlienIn(*city)
+		ac.giveOrdersToTheAlienIn(*city)
 	}
 
 	// prepare to listen for incoming situation reports about the evaluation of the invasion
-	go ac.ListenForSitrep()
+	go ac.listenForSitrep()
 
 	// After issuing all orders, the commander can evaluate the consequences and assess the
 	// damage inflicted upon the cities as a result of these commands.
@@ -58,7 +58,7 @@ func (ac *AlienCommander) StartNextIteration() {
 	wg.Wait()
 }
 
-func (ac *AlienCommander) ListenForSitrep() {
+func (ac *AlienCommander) listenForSitrep() {
 	for {
 		select {
 		case report := <-ac.Sitreps:
@@ -88,7 +88,7 @@ func (ac *AlienCommander) StopInvasion() {
 
 }
 
-func (ac *AlienCommander) DistributeAliens() {
+func (ac *AlienCommander) distributeAliens() {
 	var i int
 	for _, city := range ac.WorldMap.Cities {
 		i++
@@ -101,13 +101,13 @@ func (ac *AlienCommander) DistributeAliens() {
 
 func (ac *AlienCommander) StartInvasion() {
 	// as a fist step of invasion, the commander must distribute soldiers across cities on the map.
-	ac.DistributeAliens()
+	ac.distributeAliens()
 
 	// the invasion is split in iterations. Every iteration has start, progress (number of steps), finish.
 	// These iterations are repeated until the invasion finished. After every iteration finished, the commander
 	// decide whether the invasion can continue to the next iteration or it should be interrupted.
 	for {
-		ac.StartNextIteration()
+		ac.startNextIteration()
 		ac.iterations++
 
 		if ac.iterations >= 10000 {

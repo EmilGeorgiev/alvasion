@@ -18,17 +18,25 @@ func (wm WorldMap) CleanCity(name string) {
 	c.IsDestroyed = true
 
 	// destroy and all roads leading out and in to the city
-	for _, r := range c.Roads {
+	for _, r := range c.OutgoingRoads {
 		// we can close the channel safely because
 		close(r)
 	}
 }
 
+type Road struct {
+	Name string
+	Ch   chan Alien
+}
+
+// City for simplicity we will add a convention that the in/out roads North, South, East,
+// and West will be always in slace's indexes 0 (north), 1 (south), 2 (east), 3 (west).
 type City struct {
-	Name        string
-	Roads       []chan Alien
-	IsDestroyed bool
-	Alien       Alien
+	Name          string
+	OutgoingRoads []chan Alien
+	IncomingRoads []chan Alien
+	IsDestroyed   bool
+	Alien         Alien
 }
 
 // EvaluateCityDestruction ..
@@ -38,7 +46,7 @@ func EvaluateCityDestruction(c *City, wg *sync.WaitGroup) {
 		defer wg.Done()
 
 		var aliens []Alien
-		for _, road := range c.Roads {
+		for _, road := range c.IncomingRoads {
 			select {
 			case alien := <-road:
 				aliens = append(aliens, alien)
@@ -71,27 +79,27 @@ func EvaluateRoadsDestruction(c *City, wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
 
-		var destroyedRoads []int
-		for i, road := range c.Roads {
+		for i, road := range c.IncomingRoads {
 			select {
 			case _, ok := <-road:
 				if !ok {
 					// the road/channel is destroyed, and we can remove it from the
 					// list with roads that leading in and out of the city
-					destroyedRoads = append(destroyedRoads, i)
-					continue
+					c.IncomingRoads[i] = nil
+					c.OutgoingRoads[i] = nil
 				}
 			default:
 
 			}
 		}
-
-		// remove destroyed roads. They will be no longer used by anyone.
-		for j := len(destroyedRoads) - 1; j >= 0; j-- {
-			i := destroyedRoads[j]
-			c.Roads = append(c.Roads[:i], c.Roads[i+1:]...)
-		}
 	}()
+}
+
+var inOutMap = map[int]int{
+	0: 1, // north-south
+	1: 0, // south-north
+	2: 3, // east-west
+	3: 2, // west-east
 }
 
 //func generateWorldMap(fileName string) WorldMap {

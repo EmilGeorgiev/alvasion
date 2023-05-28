@@ -71,42 +71,55 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 		Roads:  map[string]chan Alien{},
 	}
 	for p := range parts {
-		city := &City{Name: p[0]}
+		city := &City{
+			Name:          p[0],
+			IncomingRoads: make([]chan Alien, 4),
+			OutgoingRoads: make([]chan Alien, 4),
+		}
 		for _, r := range p[1:] {
-			road := strings.ToLower(r)
-			rp := strings.Split(road, "=")
+			rp := strings.Split(r, "=")
 
-			if strings.ToLower(rp[0]) == "west" {
-				ch := make(chan Alien)
-				a, ok := wm.Roads["east="+rp[1]]
+			// 0 (north), 1 (south), 2 (east), 3 (west)
+			if strings.ToLower(rp[0]) == "north" {
+				outgoing := make(chan Alien, 1)
+				city.OutgoingRoads[0] = outgoing
+				//wm.Roads[road] = outgoing
+
+				cityOnNorth, ok := wm.Cities[rp[1]]
 				if ok {
-					ch = a
+					city.IncomingRoads[0] = cityOnNorth.OutgoingRoads[1]
+					cityOnNorth.IncomingRoads[1] = city.OutgoingRoads[0]
 				}
-				city.Roads = append(city.Roads, ch)
-			} else if strings.ToLower(rp[0]) == "north" {
-				ch := make(chan Alien)
-				a, ok := wm.Roads["south="+rp[1]]
-				if ok {
-					ch = a
-				}
-				wm.Roads[road] = ch
-				city.Roads = append(city.Roads, ch)
-			} else if strings.ToLower(rp[0]) == "east" {
-				ch := make(chan Alien)
-				a, ok := wm.Roads["west="+rp[1]]
-				if ok {
-					ch = a
-				}
-				wm.Roads[road] = ch
-				city.Roads = append(city.Roads, ch)
 			} else if strings.ToLower(rp[0]) == "south" {
-				ch := make(chan Alien)
-				a, ok := wm.Roads["north="+rp[1]]
+				outgoing := make(chan Alien, 1)
+				city.OutgoingRoads[1] = outgoing
+				//wm.Roads[road] = outgoing
+
+				cityOnSouth, ok := wm.Cities[rp[1]]
 				if ok {
-					ch = a
+					city.IncomingRoads[1] = cityOnSouth.OutgoingRoads[0]
+					cityOnSouth.IncomingRoads[0] = city.OutgoingRoads[1]
 				}
-				wm.Roads[road] = ch
-				city.Roads = append(city.Roads, ch)
+			} else if strings.ToLower(rp[0]) == "east" {
+				outgoing := make(chan Alien, 1)
+				city.OutgoingRoads[2] = outgoing
+				//wm.Roads[road] = outgoing
+
+				cityOnEast, ok := wm.Cities[rp[1]]
+				if ok {
+					city.IncomingRoads[2] = cityOnEast.OutgoingRoads[3]
+					cityOnEast.IncomingRoads[3] = cityOnEast.OutgoingRoads[2]
+				}
+			} else if strings.ToLower(rp[0]) == "west" {
+				outgoing := make(chan Alien, 1)
+				city.OutgoingRoads[3] = outgoing
+				//wm.Roads[road] = outgoing
+
+				cityOnWest, ok := wm.Cities[rp[1]]
+				if ok {
+					city.IncomingRoads[3] = cityOnWest.OutgoingRoads[2]
+					cityOnWest.IncomingRoads[2] = city.OutgoingRoads[3]
+				}
 			}
 		}
 		wm.Cities[city.Name] = city

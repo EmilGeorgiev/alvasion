@@ -14,8 +14,8 @@ func TestCleanCity(t *testing.T) {
 	roadEast := make(chan alvasion.Alien)
 	roadWest := make(chan alvasion.Alien)
 	wm := &alvasion.WorldMap{Cities: map[string]*alvasion.City{
-		"Foo": {Name: "Foo", Roads: []chan alvasion.Alien{roadEast, roadWest}, IsDestroyed: false},
-		"Baz": {Name: "Baz", Roads: []chan alvasion.Alien{make(chan alvasion.Alien)}, IsDestroyed: false},
+		"Foo": {Name: "Foo", OutgoingRoads: []chan alvasion.Alien{roadEast, roadWest}, IsDestroyed: false},
+		"Baz": {Name: "Baz", OutgoingRoads: []chan alvasion.Alien{make(chan alvasion.Alien)}, IsDestroyed: false},
 	}}
 
 	// ACTIONS
@@ -35,7 +35,7 @@ func TestCleanCityThatDoesNotExist(t *testing.T) {
 	roadEast := make(chan alvasion.Alien, 1)
 	roadWest := make(chan alvasion.Alien, 1)
 	wm := &alvasion.WorldMap{Cities: map[string]*alvasion.City{
-		"Foo": {Name: "Foo", Roads: []chan alvasion.Alien{roadEast, roadWest}, IsDestroyed: false},
+		"Foo": {Name: "Foo", OutgoingRoads: []chan alvasion.Alien{roadEast, roadWest}, IsDestroyed: false},
 	}}
 
 	// ACTIONS
@@ -65,12 +65,12 @@ func TestEvaluateCityDestructionWhenZeroAliensVisitTheCity(t *testing.T) {
 func TestEvaluateCityDestructionWhenOneAlienVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
-		Name:  "Foo",
-		Roads: []chan alvasion.Alien{make(chan alvasion.Alien, 1)},
+		Name:          "Foo",
+		IncomingRoads: []chan alvasion.Alien{make(chan alvasion.Alien, 1)},
 	}
 	wg := sync.WaitGroup{}
 	a := alvasion.Alien{ID: 55, Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.Roads[0] <- a
+	c.IncomingRoads[0] <- a
 
 	// ACTION
 	alvasion.EvaluateCityDestruction(&c, &wg)
@@ -84,23 +84,23 @@ func TestEvaluateCityDestructionWhenOneAlienVisitTheCity(t *testing.T) {
 		IsCityDestroyed: false,
 	}
 	assert.Equal(t, expected, actual)
-	assert.Equal(t, 1, len(c.Roads))
+	assert.Equal(t, 1, len(c.IncomingRoads))
 }
 
 func TestEvaluateCityDestructionWhenTwoAliensVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
 		Name: "Baz",
-		Roads: []chan alvasion.Alien{
+		IncomingRoads: []chan alvasion.Alien{
 			make(chan alvasion.Alien, 1),
 			make(chan alvasion.Alien, 1),
 		},
 	}
 	wg := sync.WaitGroup{}
 	a55 := alvasion.Alien{ID: 55, Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.Roads[0] <- a55
+	c.IncomingRoads[0] <- a55
 	a100 := alvasion.Alien{ID: 100, Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.Roads[1] <- a100
+	c.IncomingRoads[1] <- a100
 
 	// ACTION
 	alvasion.EvaluateCityDestruction(&c, &wg)
@@ -119,7 +119,7 @@ func TestEvaluateCityDestructionWhenFourAliensVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
 		Name: "Baz",
-		Roads: []chan alvasion.Alien{
+		IncomingRoads: []chan alvasion.Alien{
 			make(chan alvasion.Alien, 1),
 			make(chan alvasion.Alien, 1),
 			make(chan alvasion.Alien, 1),
@@ -129,13 +129,13 @@ func TestEvaluateCityDestructionWhenFourAliensVisitTheCity(t *testing.T) {
 	wg := sync.WaitGroup{}
 	reports := make(chan alvasion.Sitrep, 1)
 	a1 := alvasion.Alien{ID: 1, Sitreps: reports}
-	c.Roads[0] <- a1
+	c.IncomingRoads[0] <- a1
 	a2 := alvasion.Alien{ID: 2, Sitreps: reports}
-	c.Roads[1] <- a2
+	c.IncomingRoads[1] <- a2
 	a3 := alvasion.Alien{ID: 3, Sitreps: reports}
-	c.Roads[2] <- a3
+	c.IncomingRoads[2] <- a3
 	a4 := alvasion.Alien{ID: 4, Sitreps: reports}
-	c.Roads[3] <- a4
+	c.IncomingRoads[3] <- a4
 
 	// ACTION
 	alvasion.EvaluateCityDestruction(&c, &wg)
@@ -160,18 +160,18 @@ func TestEvaluateCityDestructionWhenTwoAliensVisitTheCityThroughTheSameChannel(t
 	// SETUP
 	c := alvasion.City{
 		Name: "Baz",
-		Roads: []chan alvasion.Alien{
+		IncomingRoads: []chan alvasion.Alien{
 			make(chan alvasion.Alien, 2),
 		},
 	}
 	wg := sync.WaitGroup{}
 	reports := make(chan alvasion.Sitrep, 2)
 	a1 := alvasion.Alien{ID: 1, Sitreps: reports}
-	c.Roads[0] <- a1
+	c.IncomingRoads[0] <- a1
 	// Here the Sitrep channel is nil. This means that the test will panic if the Alien 2
 	// push his report to the channel.
 	a2 := alvasion.Alien{ID: 2, Sitreps: nil}
-	c.Roads[0] <- a2
+	c.IncomingRoads[0] <- a2
 
 	// ACTION
 	alvasion.EvaluateCityDestruction(&c, &wg)
@@ -186,11 +186,19 @@ func TestEvaluateCityDestructionWhenTwoAliensVisitTheCityThroughTheSameChannel(t
 // Tests for EvaluateRoadsDestruction -------------------
 func TestEvaluateRoadsDestructionWhenZeroRoadsAreDestroyed(t *testing.T) {
 	// SETUP
-	east := make(chan alvasion.Alien, 1)
-	west := make(chan alvasion.Alien, 1)
-	north := make(chan alvasion.Alien, 1)
-	south := make(chan alvasion.Alien, 1)
-	c := alvasion.City{Name: "Foo", Roads: []chan alvasion.Alien{east, west, north, south}}
+	northOut := make(chan alvasion.Alien, 1)
+	southOut := make(chan alvasion.Alien, 1)
+	eastOut := make(chan alvasion.Alien, 1)
+	westOut := make(chan alvasion.Alien, 1)
+	northIn := make(chan alvasion.Alien, 1)
+	southIn := make(chan alvasion.Alien, 1)
+	eastIn := make(chan alvasion.Alien, 1)
+	westIn := make(chan alvasion.Alien, 1)
+	c := alvasion.City{
+		Name:          "Foo",
+		OutgoingRoads: []chan alvasion.Alien{northOut, southOut, eastOut, westOut},
+		IncomingRoads: []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
+	}
 	wg := sync.WaitGroup{}
 
 	// ACTION
@@ -198,78 +206,79 @@ func TestEvaluateRoadsDestructionWhenZeroRoadsAreDestroyed(t *testing.T) {
 	wg.Wait()
 
 	// ASSERTIONS
-	east <- alvasion.Alien{}  // prove that channel est is not closed/destroyed
-	west <- alvasion.Alien{}  // prove that channel est is not closed/destroyed
-	north <- alvasion.Alien{} // prove that channel est is not closed/destroyed
-	south <- alvasion.Alien{} // prove that channel est is not closed/destroyed
-	assert.Equal(t, 4, len(c.Roads))
+	// prove that channels are not closed/destroyed
+	c.OutgoingRoads[0] <- alvasion.Alien{}
+	c.OutgoingRoads[1] <- alvasion.Alien{}
+	c.OutgoingRoads[2] <- alvasion.Alien{}
+	c.OutgoingRoads[3] <- alvasion.Alien{}
+	c.IncomingRoads[0] <- alvasion.Alien{}
+	c.IncomingRoads[1] <- alvasion.Alien{}
+	c.IncomingRoads[2] <- alvasion.Alien{}
+	c.IncomingRoads[3] <- alvasion.Alien{}
 }
 
 func TestEvaluateRoadsDestructionWhenOneRoadsIsDestroyed(t *testing.T) {
 	// SETUP
-	east := make(chan alvasion.Alien)
-	close(east)
-	west := make(chan alvasion.Alien, 1)
-	north := make(chan alvasion.Alien, 1)
-	south := make(chan alvasion.Alien, 1)
-	c := alvasion.City{Name: "Foo", Roads: []chan alvasion.Alien{east, west, north, south}}
+	northOut := make(chan alvasion.Alien, 1)
+	southOut := make(chan alvasion.Alien, 1)
+	eastOut := make(chan alvasion.Alien, 1)
+	westOut := make(chan alvasion.Alien, 1)
+	northIn := make(chan alvasion.Alien, 1)
+	southIn := make(chan alvasion.Alien, 1)
+	eastIn := make(chan alvasion.Alien, 1)
+	westIn := make(chan alvasion.Alien, 1)
+	c := alvasion.City{
+		Name:          "Foo",
+		OutgoingRoads: []chan alvasion.Alien{northOut, southOut, eastOut, westOut},
+		IncomingRoads: []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
+	}
 	wg := sync.WaitGroup{}
 
 	// ACTION
+	close(northIn)
 	alvasion.EvaluateRoadsDestruction(&c, &wg)
 	wg.Wait()
 
 	// ASSERTIONS
-	_, isOpened := <-east     // prove that channel east is not opened
-	west <- alvasion.Alien{}  // prove that channel est is not closed/destroyed
-	north <- alvasion.Alien{} // prove that channel est is not closed/destroyed
-	south <- alvasion.Alien{} // prove that channel est is not closed/destroyed
-	assert.Equal(t, 3, len(c.Roads))
-	assert.False(t, isOpened)
+	// prove that channels are not closed/destroyed
+	c.OutgoingRoads[1] <- alvasion.Alien{}
+	c.OutgoingRoads[2] <- alvasion.Alien{}
+	c.OutgoingRoads[3] <- alvasion.Alien{}
+	c.IncomingRoads[1] <- alvasion.Alien{}
+	c.IncomingRoads[2] <- alvasion.Alien{}
+	c.IncomingRoads[3] <- alvasion.Alien{}
+
+	assert.Nil(t, c.IncomingRoads[0])
+	assert.Nil(t, c.OutgoingRoads[0])
 }
 
 func TestEvaluateRoadsDestructionWhenAllRoadsAreDestroyed(t *testing.T) {
-	// SETUP
-	east := make(chan alvasion.Alien)
-	close(east)
-	west := make(chan alvasion.Alien)
-	close(west)
-	north := make(chan alvasion.Alien)
-	close(north)
-	south := make(chan alvasion.Alien)
-	close(south)
-	c := alvasion.City{Name: "Foo", Roads: []chan alvasion.Alien{east, west, north, south}}
+	northOut := make(chan alvasion.Alien, 1)
+	southOut := make(chan alvasion.Alien, 1)
+	eastOut := make(chan alvasion.Alien, 1)
+	westOut := make(chan alvasion.Alien, 1)
+	northIn := make(chan alvasion.Alien, 1)
+	southIn := make(chan alvasion.Alien, 1)
+	eastIn := make(chan alvasion.Alien, 1)
+	westIn := make(chan alvasion.Alien, 1)
+	c := alvasion.City{
+		Name:          "Foo",
+		OutgoingRoads: []chan alvasion.Alien{northOut, southOut, eastOut, westOut},
+		IncomingRoads: []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
+	}
 	wg := sync.WaitGroup{}
 
 	// ACTION
+	close(northIn)
+	close(southIn)
+	close(eastIn)
+	close(westIn)
 	alvasion.EvaluateRoadsDestruction(&c, &wg)
 	wg.Wait()
 
 	// ASSERTIONS
-	_, isOpenedEast := <-east   // prove that channel east is not opened
-	_, isOpenedWest := <-west   // prove that channel west is not opened
-	_, isOpenedNorth := <-north // prove that channel north is not opened
-	_, isOpenedSouth := <-south // prove that channel south is not opened
-	assert.Equal(t, 0, len(c.Roads))
-	assert.False(t, isOpenedEast)
-	assert.False(t, isOpenedWest)
-	assert.False(t, isOpenedNorth)
-	assert.False(t, isOpenedSouth)
-}
-
-func TestEvaluateRoadsDestructionWhenHasOnlyRoad(t *testing.T) {
-	// SETUP
-	east := make(chan alvasion.Alien)
-	close(east)
-	c := alvasion.City{Name: "Foo", Roads: []chan alvasion.Alien{east}}
-	wg := sync.WaitGroup{}
-
-	// ACTION
-	alvasion.EvaluateRoadsDestruction(&c, &wg)
-	wg.Wait()
-
-	// ASSERTIONS
-	_, isOpenedEast := <-east // prove that channel east is not opened
-	assert.Equal(t, 0, len(c.Roads))
-	assert.False(t, isOpenedEast)
+	expectedIncoming := make([]chan alvasion.Alien, 4)
+	expectedOutgoing := make([]chan alvasion.Alien, 4)
+	assert.Equal(t, expectedIncoming, c.IncomingRoads)
+	assert.Equal(t, expectedOutgoing, c.OutgoingRoads)
 }
