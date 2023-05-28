@@ -10,51 +10,88 @@ type WorldMap struct {
 	Roads  map[string]chan Alien
 }
 
+func (wm WorldMap) CleanCity(name string) {
+	c, ok := wm.Cities[name]
+	if !ok {
+		return
+	}
+	c.IsDestroyed = true
+
+	// destroy and all roads leading out and in to the city
+	for _, r := range c.Roads {
+		// we can close the channel safely because
+		close(r)
+	}
+}
+
 type City struct {
-	Name  string
-	South chan Alien
-	West  chan Alien
-	North chan Alien
-	East  chan Alien
-	//Roads []chan Alien
+	Name        string
+	Roads       []chan Alien
 	IsDestroyed bool
 	Alien       Alien
 }
 
 // EvaluateCityDestruction ..
-func EvaluateCityDestruction(c City, wg *sync.WaitGroup) {
+func EvaluateCityDestruction(c *City, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
 		var aliens []Alien
-		select {
-		case alien := <-c.East:
-			aliens = append(aliens, alien)
-		default:
-			// No alien is coming from the east road in this invasion iteration
+		var destroyedRoads []int
+		for i, road := range c.Roads {
+			select {
+			case alien, ok := <-road:
+				if !ok {
+					// the road/channel is destroyed, and we can remove it from the
+					// list with roads that leading in and out of the city
+					destroyedRoads = append(destroyedRoads, i)
+					continue
+				}
+				aliens = append(aliens, alien)
+			default:
+				// No alien is coming from this road in this invasion iteration
+			}
 		}
 
-		select {
-		case alien := <-c.West:
-			aliens = append(aliens, alien)
-		default:
-			// No alien is coming from the west road in this invasion iteration
+		// remove destroyed roads. They will be no longer used by anyone.
+		for j := len(destroyedRoads) - 1; j >= 0; j-- {
+			i := destroyedRoads[j]
+			c.Roads = append(c.Roads[:i], c.Roads[i+1:]...)
 		}
 
-		select {
-		case alien := <-c.South:
-			aliens = append(aliens, alien)
-		default:
-			// No alien is coming from the south road in this invasion iteration
-		}
-
-		select {
-		case alien := <-c.North:
-			aliens = append(aliens, alien)
-		default:
-			// No alien is coming from the north road in this invasion iteration
-		}
+		//select {
+		//case alien, ok := <-c.West:
+		//	if !ok {
+		//		// channel is closed and is not possible an alien to come from it
+		//		break
+		//	}
+		//	aliens = append(aliens, alien)
+		//default:
+		//	// No alien is coming from the west road in this invasion iteration
+		//}
+		//
+		//select {
+		//case alien, ok := <-c.South:
+		//	if !ok {
+		//		// channel is closed and is not possible an alien to come from it
+		//		break
+		//	}
+		//	aliens = append(aliens, alien)
+		//default:
+		//	// No alien is coming from the south road in this invasion iteration
+		//}
+		//
+		//select {
+		//case alien, ok := <-c.North:
+		//	if !ok {
+		//		// channel is closed and is not possible an alien to come from it
+		//		break
+		//	}
+		//	aliens = append(aliens, alien)
+		//default:
+		//	// No alien is coming from the north road in this invasion iteration
+		//}
 
 		if aliens == nil {
 			fmt.Println("No Aliens")

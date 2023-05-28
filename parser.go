@@ -82,7 +82,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 				if ok {
 					ch = a
 				}
-				city.West = ch
+				city.Roads = append(city.Roads, ch)
 			} else if strings.ToLower(rp[0]) == "north" {
 				ch := make(chan Alien)
 				a, ok := wm.Roads["south="+rp[1]]
@@ -90,7 +90,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 					ch = a
 				}
 				wm.Roads[road] = ch
-				city.North = ch
+				city.Roads = append(city.Roads, ch)
 			} else if strings.ToLower(rp[0]) == "east" {
 				ch := make(chan Alien)
 				a, ok := wm.Roads["west="+rp[1]]
@@ -98,7 +98,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 					ch = a
 				}
 				wm.Roads[road] = ch
-				city.East = ch
+				city.Roads = append(city.Roads, ch)
 			} else if strings.ToLower(rp[0]) == "south" {
 				ch := make(chan Alien)
 				a, ok := wm.Roads["north="+rp[1]]
@@ -106,7 +106,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 					ch = a
 				}
 				wm.Roads[road] = ch
-				city.South = ch
+				city.Roads = append(city.Roads, ch)
 			}
 		}
 		wm.Cities[city.Name] = city

@@ -9,31 +9,31 @@ import (
 )
 
 func TestEvaluateCityDestructionWhenZeroAliensVisitTheCity(t *testing.T) {
-	c := alvasion.City{
-		Name:  "Foo",
-		Alien: alvasion.Alien{},
-	}
+	// SETUP
+	c := alvasion.City{Name: "Foo"}
 	wg := sync.WaitGroup{}
-	alvasion.EvaluateCityDestruction(c, &wg)
+
+	// ACTION
+	alvasion.EvaluateCityDestruction(&c, &wg)
 	wg.Wait()
 
-	// This test case is to prove that the function EvaluateCityDestruction will not block
-	// if no aliens visit the city.
+	// ASSERTIONS
+	expected := alvasion.City{Name: "Foo"}
+	assert.Equal(t, expected, c)
 }
 
 func TestEvaluateCityDestructionWhenOneAlienVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
 		Name:  "Foo",
-		South: make(chan alvasion.Alien, 1),
-		Alien: alvasion.Alien{},
+		Roads: []chan alvasion.Alien{make(chan alvasion.Alien, 1)},
 	}
 	wg := sync.WaitGroup{}
 	a := alvasion.Alien{Name: "55", Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.South <- a
+	c.Roads[0] <- a
 
 	// ACTION
-	alvasion.EvaluateCityDestruction(c, &wg)
+	alvasion.EvaluateCityDestruction(&c, &wg)
 	actual := <-a.Sitreps
 	wg.Wait()
 
@@ -44,24 +44,26 @@ func TestEvaluateCityDestructionWhenOneAlienVisitTheCity(t *testing.T) {
 		IsCityDestroyed: false,
 	}
 	assert.Equal(t, expected, actual)
+	assert.Equal(t, 1, len(c.Roads))
 }
 
 func TestEvaluateCityDestructionWhenTwoAliensVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
-		Name:  "Baz",
-		South: make(chan alvasion.Alien, 1),
-		North: make(chan alvasion.Alien, 1),
-		Alien: alvasion.Alien{},
+		Name: "Baz",
+		Roads: []chan alvasion.Alien{
+			make(chan alvasion.Alien, 1),
+			make(chan alvasion.Alien, 1),
+		},
 	}
 	wg := sync.WaitGroup{}
 	a55 := alvasion.Alien{Name: "55", Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.South <- a55
+	c.Roads[0] <- a55
 	a100 := alvasion.Alien{Name: "100", Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.North <- a100
+	c.Roads[1] <- a100
 
 	// ACTION
-	alvasion.EvaluateCityDestruction(c, &wg)
+	alvasion.EvaluateCityDestruction(&c, &wg)
 	actualRep55 := <-a55.Sitreps
 	actualRep100 := <-a100.Sitreps
 	wg.Wait()
@@ -76,29 +78,31 @@ func TestEvaluateCityDestructionWhenTwoAliensVisitTheCity(t *testing.T) {
 func TestEvaluateCityDestructionWhenFourAliensVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
-		Name:  "Baz",
-		South: make(chan alvasion.Alien, 1),
-		North: make(chan alvasion.Alien, 1),
-		East:  make(chan alvasion.Alien, 1),
-		West:  make(chan alvasion.Alien, 1),
-		Alien: alvasion.Alien{},
+		Name: "Baz",
+		Roads: []chan alvasion.Alien{
+			make(chan alvasion.Alien, 1),
+			make(chan alvasion.Alien, 1),
+			make(chan alvasion.Alien, 1),
+			make(chan alvasion.Alien, 1),
+		},
 	}
 	wg := sync.WaitGroup{}
-	a1 := alvasion.Alien{Name: "1", Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.South <- a1
-	a2 := alvasion.Alien{Name: "2", Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.North <- a2
-	a3 := alvasion.Alien{Name: "3", Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.East <- a3
-	a4 := alvasion.Alien{Name: "4", Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.West <- a4
+	reports := make(chan alvasion.Sitrep, 1)
+	a1 := alvasion.Alien{Name: "1", Sitreps: reports}
+	c.Roads[0] <- a1
+	a2 := alvasion.Alien{Name: "2", Sitreps: reports}
+	c.Roads[1] <- a2
+	a3 := alvasion.Alien{Name: "3", Sitreps: reports}
+	c.Roads[2] <- a3
+	a4 := alvasion.Alien{Name: "4", Sitreps: reports}
+	c.Roads[3] <- a4
 
 	// ACTION
-	alvasion.EvaluateCityDestruction(c, &wg)
-	actualRep1 := <-a1.Sitreps
-	actualRep2 := <-a2.Sitreps
-	actualRep3 := <-a3.Sitreps
-	actualRep4 := <-a4.Sitreps
+	alvasion.EvaluateCityDestruction(&c, &wg)
+	actualRep1 := <-reports
+	actualRep2 := <-reports
+	actualRep3 := <-reports
+	actualRep4 := <-reports
 	wg.Wait()
 
 	// ASSERTION
@@ -115,21 +119,23 @@ func TestEvaluateCityDestructionWhenFourAliensVisitTheCity(t *testing.T) {
 func TestEvaluateCityDestructionWhenTwoAliensVisitTheCityThroughTheSameChannel(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
-		Name:  "Baz",
-		South: make(chan alvasion.Alien, 2),
-		Alien: alvasion.Alien{},
+		Name: "Baz",
+		Roads: []chan alvasion.Alien{
+			make(chan alvasion.Alien, 2),
+		},
 	}
 	wg := sync.WaitGroup{}
-	a1 := alvasion.Alien{Name: "1", Sitreps: make(chan alvasion.Sitrep, 1)}
-	c.South <- a1
+	reports := make(chan alvasion.Sitrep, 2)
+	a1 := alvasion.Alien{Name: "1", Sitreps: reports}
+	c.Roads[0] <- a1
 	// Here the Sitrep channel is nil. This means that the test will panic if the Alien 2
 	// push his report to the channel.
 	a2 := alvasion.Alien{Name: "2", Sitreps: nil}
-	c.South <- a2
+	c.Roads[0] <- a2
 
 	// ACTION
-	alvasion.EvaluateCityDestruction(c, &wg)
-	actualRep1 := <-a1.Sitreps
+	alvasion.EvaluateCityDestruction(&c, &wg)
+	actualRep1 := <-reports
 	wg.Wait()
 
 	// ASSERTION
