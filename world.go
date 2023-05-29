@@ -87,7 +87,6 @@ func EvaluateCityDestruction(c *City, wg *sync.WaitGroup) {
 		}
 
 		a := aliens[0]
-		//c.Alien = &a
 		a.Sitreps <- Sitrep{From: a.ID, CityName: c.Name, IsCityDestroyed: false}
 	}()
 }
