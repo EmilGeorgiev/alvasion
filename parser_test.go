@@ -310,7 +310,7 @@ func TestGenerateWorldMap(t *testing.T) {
 	}
 	// 0 (north), 1 (south), 2 (east), 3 (west)
 	parts := make(chan []string)
-	var wm alvasion.WorldMap
+	//var wm alvasion.WorldMap
 
 	// ACTION
 	go func() {
@@ -325,28 +325,28 @@ func TestGenerateWorldMap(t *testing.T) {
 		parts <- []string{"X9", "west=X8", "north=X6"}
 		close(parts)
 	}()
-	wm = alvasion.GenerateWorldMap(parts)
+	wm := alvasion.GenerateWorldMap(parts)
 
 	// ASSERTIONS
 	for _, c := range cases {
 		t.Run("Assert "+c.Name, func(t *testing.T) {
-			assert.Equal(t, c.Name, wm.Cities[c.Name].Name)
-			assert.Equal(t, c.OutgoingRoadsNames, wm.Cities[c.Name].OutgoingRoadsNames)
-			
-			assert.Equal(t, c.NorthIsNil, wm.Cities[c.Name].OutgoingRoads[0] == nil)
-			assert.Equal(t, c.NorthIsNil, wm.Cities[c.Name].IncomingRoads[0] == nil)
+			assert.Equal(t, c.Name, wm[c.Name].Name)
+			assert.Equal(t, c.OutgoingRoadsNames, wm[c.Name].OutgoingRoadsNames)
 
-			assert.Equal(t, c.SouthIsNil, wm.Cities[c.Name].OutgoingRoads[1] == nil)
-			assert.Equal(t, c.SouthIsNil, wm.Cities[c.Name].IncomingRoads[1] == nil)
+			assert.Equal(t, c.NorthIsNil, wm[c.Name].OutgoingRoads[0] == nil)
+			assert.Equal(t, c.NorthIsNil, wm[c.Name].IncomingRoads[0] == nil)
 
-			assert.Equal(t, c.EastIsNil, wm.Cities[c.Name].OutgoingRoads[2] == nil)
-			assert.Equal(t, c.EastIsNil, wm.Cities[c.Name].IncomingRoads[2] == nil)
+			assert.Equal(t, c.SouthIsNil, wm[c.Name].OutgoingRoads[1] == nil)
+			assert.Equal(t, c.SouthIsNil, wm[c.Name].IncomingRoads[1] == nil)
 
-			assert.Equal(t, c.WestIsNil, wm.Cities[c.Name].OutgoingRoads[3] == nil)
-			assert.Equal(t, c.WestIsNil, wm.Cities[c.Name].IncomingRoads[3] == nil)
+			assert.Equal(t, c.EastIsNil, wm[c.Name].OutgoingRoads[2] == nil)
+			assert.Equal(t, c.EastIsNil, wm[c.Name].IncomingRoads[2] == nil)
+
+			assert.Equal(t, c.WestIsNil, wm[c.Name].OutgoingRoads[3] == nil)
+			assert.Equal(t, c.WestIsNil, wm[c.Name].IncomingRoads[3] == nil)
 		})
 	}
-	assert.Equal(t, 9, len(wm.Cities))
+	assert.Equal(t, 9, len(wm))
 }
 
 func TestGenerateWorldMapConnectProperlyCitiesOnDirectionNorthSouth(t *testing.T) {
@@ -363,12 +363,12 @@ func TestGenerateWorldMapConnectProperlyCitiesOnDirectionNorthSouth(t *testing.T
 	}()
 	wm := alvasion.GenerateWorldMap(parts)
 	expectedAlien1 := alvasion.Alien{ID: 1}
-	wm.Cities["X1"].OutgoingRoads[1] <- expectedAlien1
-	actualAlien1 := <-wm.Cities["X4"].IncomingRoads[0]
+	wm["X1"].OutgoingRoads[1] <- expectedAlien1
+	actualAlien1 := <-wm["X4"].IncomingRoads[0]
 
 	expectedAlien2 := alvasion.Alien{ID: 2}
-	wm.Cities["X4"].OutgoingRoads[0] <- expectedAlien2
-	actualAlien2 := <-wm.Cities["X1"].IncomingRoads[1]
+	wm["X4"].OutgoingRoads[0] <- expectedAlien2
+	actualAlien2 := <-wm["X1"].IncomingRoads[1]
 
 	// ASSERTIONS
 	assert.Equal(t, expectedAlien1, actualAlien1)
@@ -389,12 +389,12 @@ func TestGenerateWorldMapConnectProperlyCitiesOnDirectionEastWest(t *testing.T) 
 	}()
 	wm := alvasion.GenerateWorldMap(parts)
 	expectedAlien1 := alvasion.Alien{ID: 1}
-	wm.Cities["X1"].OutgoingRoads[2] <- expectedAlien1
-	actualAlien1 := <-wm.Cities["X2"].IncomingRoads[3]
+	wm["X1"].OutgoingRoads[2] <- expectedAlien1
+	actualAlien1 := <-wm["X2"].IncomingRoads[3]
 
 	expectedAlien2 := alvasion.Alien{ID: 2}
-	wm.Cities["X2"].OutgoingRoads[3] <- expectedAlien2
-	actualAlien2 := <-wm.Cities["X1"].IncomingRoads[2]
+	wm["X2"].OutgoingRoads[3] <- expectedAlien2
+	actualAlien2 := <-wm["X1"].IncomingRoads[2]
 
 	// ASSERTIONS
 	assert.Equal(t, expectedAlien1, actualAlien1)
