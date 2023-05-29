@@ -1,7 +1,8 @@
 package alvasion_test
 
 import (
-	"fmt"
+	"github.com/stretchr/testify/assert"
+	"sort"
 	"testing"
 
 	"github.com/EmilGeorgiev/alvasion"
@@ -147,15 +148,12 @@ import (
 //}
 
 type connection struct {
-	Direction int // 0 - north, 1 - south, 2 - east, 3 -west
-	City      string
-}
-
-type report struct {
-	cities map[string][]connection
+	DirectionName string // 0 - north, 1 - south, 2 - east, 3 -west
+	City          string
 }
 
 func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
+	// SETUP
 	parts := make(chan []string)
 	go func() {
 		parts <- []string{"X1", "east=X2", "south=X4"}
@@ -169,66 +167,33 @@ func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
 		parts <- []string{"X9", "west=X8", "north=X6"}
 		close(parts)
 	}()
-	//rr := report{
-	//	cities: map[string][]connection{
-	//		"X1": {{Direction: 1, City: "X4"}, {Direction: 2, City: "X2"}},
-	//		"X2": {{Direction: 1, City: "X5"}, {Direction: 2, City: "X3"}, {Direction: 3, City: "X1"}},
-	//		"X3":{{Direction: 1, City: "X6"}, {Direction: 3, City: "X2"}},
-	//		"X4":{{Direction: 0, City: "X1"}, {Direction: 1, City: "X7"},{Direction: 2, City: "X5"}},
-	//		"X5":{{Direction: 0, City: "X2"}, {Direction: 1, City: "X8"},{Direction: 2, City: "X6"}, {Direction: 3, City: "X4"}},
-	//		"X6":{{Direction: 0, City: "X3"}, {Direction: 1, City: "X9"}, {Direction: 3, City: "X4"}},
-	//		"X7":{{Direction: 0, City: "X4"} ,{Direction: 2, City: "X8"}},
-	//		"X8":{{Direction: 0, City: "X5"},{Direction: 2, City: "X9"}, {Direction: 3, City: "X7"}},
-	//		"X9":{{Direction: 0, City: "X6"}, {Direction: 3, City: "X8"}},
-	//	},
-	//}
-	wm := alvasion.GenerateWorldMap(parts)
 
+	cities := buildCitiesAndTheirConnections()
+	wm := alvasion.GenerateWorldMap(parts)
 	sitreps := make(chan alvasion.Sitrep, 1)
 	aliens := []*alvasion.Alien{
-		{ID: 0, Sitreps: sitreps},
-		{ID: 1, Sitreps: sitreps},
-		{ID: 2, Sitreps: sitreps},
-		{ID: 3, Sitreps: sitreps},
-		{ID: 4, Sitreps: sitreps},
-		{ID: 5, Sitreps: sitreps},
+		{ID: 0, Sitreps: sitreps}, {ID: 1, Sitreps: sitreps}, {ID: 2, Sitreps: sitreps},
+		{ID: 3, Sitreps: sitreps}, {ID: 4, Sitreps: sitreps}, {ID: 5, Sitreps: sitreps},
 	}
-
-	//for i := 0; i < 6; i++ {
-	//	aliens[0] = alvasion.Alien{
-	//		ID:      0,
-	//		Sitreps: sitreps,
-	//		Killed:  false,
-	//		Trapped: false,
-	//	}
-	//}
-
 	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
-	//notify := make(chan string)
-	//done := make(chan struct{})
-	//ac.SetNotifyDestroy(notify)
-	//go func() {
-	//	for n := range notify {
-	//		for _, conn := range rr.cities[n] {
-	//			rr[conn.City]
-	//		}
-	//
-	//	}
-	//	done <- struct{}{}
-	//}()
+	notify := make(chan string)
+	done := make(chan struct{})
+	listenForNotificationsFromAlienCommander(cities, notify, done)
 
+	// ACTION
+	ac.SetNotifyDestroy(notify)
 	ac.StartInvasion()
+	close(notify)
+	<-done
 
-	//close(notify)
-	//<- done
-
-	report := ac.GenerateReportForInvasion()
-	fmt.Println("---------------------------")
-	fmt.Println(report)
-	fmt.Println("Finish")
+	// ASSERTIONS
+	actual := ac.GenerateReportForInvasion2()
+	expected := generateReport(cities)
+	assert.Equal(t, expected, actual)
 }
 
 func TestStartInvasionWith5AliensSoldiersAnd9Cities(t *testing.T) {
+	// SETUP
 	parts := make(chan []string)
 	go func() {
 		parts <- []string{"X1", "east=X2", "south=X4"}
@@ -242,37 +207,33 @@ func TestStartInvasionWith5AliensSoldiersAnd9Cities(t *testing.T) {
 		parts <- []string{"X9", "west=X8", "north=X6"}
 		close(parts)
 	}()
-	wm := alvasion.GenerateWorldMap(parts)
 
+	cities := buildCitiesAndTheirConnections()
+	wm := alvasion.GenerateWorldMap(parts)
 	sitreps := make(chan alvasion.Sitrep, 1)
 	aliens := []*alvasion.Alien{
-		{ID: 0, Sitreps: sitreps},
-		{ID: 1, Sitreps: sitreps},
-		{ID: 2, Sitreps: sitreps},
-		{ID: 3, Sitreps: sitreps},
-		{ID: 4, Sitreps: sitreps},
+		{ID: 0, Sitreps: sitreps}, {ID: 1, Sitreps: sitreps}, {ID: 2, Sitreps: sitreps},
+		{ID: 3, Sitreps: sitreps}, {ID: 4, Sitreps: sitreps},
 	}
-
-	//for i := 0; i < 6; i++ {
-	//	aliens[0] = alvasion.Alien{
-	//		ID:      0,
-	//		Sitreps: sitreps,
-	//		Killed:  false,
-	//		Trapped: false,
-	//	}
-	//}
-
 	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+	notify := make(chan string)
+	done := make(chan struct{})
+	listenForNotificationsFromAlienCommander(cities, notify, done)
 
+	// ACTION
+	ac.SetNotifyDestroy(notify)
 	ac.StartInvasion()
+	close(notify)
+	<-done
 
-	report := ac.GenerateReportForInvasion()
-	fmt.Println("---------------------------")
-	fmt.Println(report)
-	fmt.Println("Finish")
+	// ASSERTIONS
+	actual := ac.GenerateReportForInvasion2()
+	expected := generateReport(cities)
+	assert.Equal(t, expected, actual)
 }
 
 func TestStartInvasionWith1AliensSoldiersAnd9Cities(t *testing.T) {
+	// SETUP
 	parts := make(chan []string)
 	go func() {
 		parts <- []string{"X1", "east=X2", "south=X4"}
@@ -286,34 +247,26 @@ func TestStartInvasionWith1AliensSoldiersAnd9Cities(t *testing.T) {
 		parts <- []string{"X9", "west=X8", "north=X6"}
 		close(parts)
 	}()
+
+	cities := buildCitiesAndTheirConnections()
 	wm := alvasion.GenerateWorldMap(parts)
-
 	sitreps := make(chan alvasion.Sitrep, 1)
-	aliens := []*alvasion.Alien{
-		{ID: 0, Sitreps: sitreps},
-		//{ID: 1, Sitreps: sitreps},
-		//{ID: 2, Sitreps: sitreps},
-		//{ID: 3, Sitreps: sitreps},
-		//{ID: 4, Sitreps: sitreps},
-	}
-
-	//for i := 0; i < 6; i++ {
-	//	aliens[0] = alvasion.Alien{
-	//		ID:      0,
-	//		Sitreps: sitreps,
-	//		Killed:  false,
-	//		Trapped: false,
-	//	}
-	//}
-
+	aliens := []*alvasion.Alien{{ID: 0, Sitreps: sitreps}}
 	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+	notify := make(chan string)
+	done := make(chan struct{})
+	listenForNotificationsFromAlienCommander(cities, notify, done)
 
+	// ACTION
+	ac.SetNotifyDestroy(notify)
 	ac.StartInvasion()
+	close(notify)
+	<-done
 
-	report := ac.GenerateReportForInvasion()
-	fmt.Println("---------------------------")
-	fmt.Println(report)
-	fmt.Println("Finish")
+	// ASSERTIONS
+	actual := ac.GenerateReportForInvasion2()
+	expected := generateReport(cities)
+	assert.Equal(t, expected, actual)
 }
 
 func TestStartInvasionWith11AliensSoldiersAnd9Cities(t *testing.T) {
@@ -330,53 +283,86 @@ func TestStartInvasionWith11AliensSoldiersAnd9Cities(t *testing.T) {
 		parts <- []string{"X9", "west=X8", "north=X6"}
 		close(parts)
 	}()
-	wm := alvasion.GenerateWorldMap(parts)
 
+	cities := buildCitiesAndTheirConnections()
+	wm := alvasion.GenerateWorldMap(parts)
 	sitreps := make(chan alvasion.Sitrep, 1)
 	aliens := []*alvasion.Alien{
-		{ID: 0, Sitreps: sitreps},
-		{ID: 1, Sitreps: sitreps},
-		{ID: 2, Sitreps: sitreps},
-		{ID: 3, Sitreps: sitreps},
-		{ID: 4, Sitreps: sitreps},
-		{ID: 5, Sitreps: sitreps},
-		{ID: 6, Sitreps: sitreps},
-		{ID: 7, Sitreps: sitreps},
-		{ID: 8, Sitreps: sitreps},
-		{ID: 9, Sitreps: sitreps},
-		{ID: 10, Sitreps: sitreps},
+		{ID: 0, Sitreps: sitreps}, {ID: 1, Sitreps: sitreps}, {ID: 2, Sitreps: sitreps}, {ID: 3, Sitreps: sitreps},
+		{ID: 4, Sitreps: sitreps}, {ID: 5, Sitreps: sitreps}, {ID: 6, Sitreps: sitreps}, {ID: 7, Sitreps: sitreps},
+		{ID: 8, Sitreps: sitreps}, {ID: 9, Sitreps: sitreps}, {ID: 10, Sitreps: sitreps},
 	}
-
-	//for i := 0; i < 6; i++ {
-	//	aliens[0] = alvasion.Alien{
-	//		ID:      0,
-	//		Sitreps: sitreps,
-	//		Killed:  false,
-	//		Trapped: false,
-	//	}
-	//}
-
 	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+	notify := make(chan string)
+	done := make(chan struct{})
+	listenForNotificationsFromAlienCommander(cities, notify, done)
 
+	// ACTION
+	ac.SetNotifyDestroy(notify)
 	ac.StartInvasion()
+	close(notify)
+	<-done
 
-	report := ac.GenerateReportForInvasion()
-	fmt.Println("---------------------------")
-	fmt.Println(report)
-	fmt.Println("Finish")
+	// ASSERTIONS
+	actual := ac.GenerateReportForInvasion2()
+	expected := generateReport(cities)
+	assert.Equal(t, expected, actual)
 }
 
-func TestMmm(t *testing.T) {
-	m := map[string]int{
-		"1": 1,
-		"2": 2,
-		"3": 3,
-		"4": 4,
+func buildCitiesAndTheirConnections() map[string][]*connection {
+	return map[string][]*connection{
+		"X1": {{DirectionName: "south=X4", City: "X4"}, {DirectionName: "east=X2", City: "X2"}},
+		"X2": {{DirectionName: "south=X5", City: "X5"}, {DirectionName: "east=X3", City: "X3"}, {DirectionName: "west=X1", City: "X1"}},
+		"X3": {{DirectionName: "south=X6", City: "X6"}, {DirectionName: "west=X2", City: "X2"}},
+		"X4": {{DirectionName: "north=X1", City: "X1"}, {DirectionName: "south=X7", City: "X7"}, {DirectionName: "east=X5", City: "X5"}},
+		"X5": {{DirectionName: "north=X2", City: "X2"}, {DirectionName: "south=X8", City: "X8"}, {DirectionName: "east=X6", City: "X6"}, {DirectionName: "west=X4", City: "X4"}},
+		"X6": {{DirectionName: "north=X3", City: "X3"}, {DirectionName: "south=X9", City: "X9"}, {DirectionName: "west=X5", City: "X5"}},
+		"X7": {{DirectionName: "north=X4", City: "X4"}, {DirectionName: "east=X8", City: "X8"}},
+		"X8": {{DirectionName: "north=X5", City: "X5"}, {DirectionName: "east=X9", City: "X9"}, {DirectionName: "west=X7", City: "X7"}},
+		"X9": {{DirectionName: "north=X6", City: "X6"}, {DirectionName: "west=X8", City: "X8"}},
+	}
+}
+
+func listenForNotificationsFromAlienCommander(cities map[string][]*connection, notify chan string, done chan struct{}) {
+	go func() {
+		for n := range notify {
+			for _, conn := range cities[n] {
+				if conn == nil {
+					continue
+				}
+				conn2 := cities[conn.City]
+				for i, c := range conn2 {
+					if c == nil {
+						continue
+					}
+					if c.City == n {
+						conn2[i] = nil
+					}
+				}
+			}
+			delete(cities, n)
+		}
+		done <- struct{}{}
+	}()
+}
+
+func generateReport(cities map[string][]*connection) map[string][]string {
+	var keys []string
+	for k, _ := range cities {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	result := map[string][]string{}
+	for _, name := range keys {
+		connections := cities[name]
+		for _, road := range connections {
+			if road == nil {
+				continue
+			}
+			result[name] = append(result[name], road.DirectionName)
+		}
 	}
 
-	for k, v := range m {
-		m[k] = v + 1
-	}
-
-	fmt.Println(m)
+	return result
 }

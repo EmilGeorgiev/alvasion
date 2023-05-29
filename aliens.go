@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
+	"sort"
 	"sync"
 )
 
@@ -44,6 +45,31 @@ func (ac *AlienCommander) GenerateReportForInvasion() string {
 	}
 
 	return buf.String()
+}
+
+func (ac *AlienCommander) GenerateReportForInvasion2() map[string][]string {
+	var keys []string
+	for k, city := range ac.WorldMap {
+		if city.IsDestroyed {
+			continue
+		}
+		keys = append(keys, k)
+
+	}
+	sort.Strings(keys)
+
+	result := map[string][]string{}
+	for _, name := range keys {
+		city := ac.WorldMap[name]
+		for _, road := range city.OutgoingRoadsNames {
+			if road == "" {
+				continue
+			}
+			result[name] = append(result[name], road)
+		}
+	}
+
+	return result
 }
 
 func (ac *AlienCommander) SetNotifyDestroy(n chan string) {
@@ -99,11 +125,11 @@ func (ac *AlienCommander) GiveOrdersToTheAlienIn(c City) {
 	//c.Alien = nil
 }
 
-// StartNextIteration starts the next iteration of the invasion. It orders all soldiers to invade, listens for situation
+// StartIteration starts the next iteration of the invasion. It orders all soldiers to invade, listens for situation
 // reports, evaluates city destruction, waits for all evaluations to finish, and then evaluates road destruction.
 //
 // The method is used after the previous iteration is finished.
-func (ac *AlienCommander) StartNextIteration() {
+func (ac *AlienCommander) StartIteration() {
 	wg := sync.WaitGroup{}
 	// give orders to all soldiers
 	var cities []City
@@ -232,7 +258,7 @@ func (ac *AlienCommander) StartInvasion() {
 	// These iterations are repeated until the invasion finished. After every iteration finished, the commander
 	// decide whether the invasion can continue to the next iteration or it should be interrupted.
 	for {
-		ac.StartNextIteration()
+		ac.StartIteration()
 		ac.iterations++
 
 		if ac.iterations >= 10000 {
