@@ -76,7 +76,7 @@ func (ac *AlienCommander) GiveOrdersToTheAlienIn(c *City) {
 	// The commander selects a random active outgoing road and orders the alien to take that road.
 	i := rand.Intn(len(availableRoads))
 	availableRoads[i] <- *c.Alien
-	fmt.Println("Give prders to:", c.Alien.ID)
+	//fmt.Println("Give prders to:", c.Alien.ID)
 
 	c.Alien = nil
 }
@@ -120,9 +120,6 @@ func (ac *AlienCommander) ListenForSitrep() {
 			}
 
 			ac.WorldMap.CleanCity(report.CityName)
-			if ac.Soldiers[report.From].Killed {
-				fmt.Println("000000000000000000000000000000000")
-			}
 			ac.Soldiers[report.From].Killed = true
 			ac.KilledSoldiers++
 			ac.WorldMap.Cities[report.CityName].Alien = nil

@@ -59,7 +59,7 @@ func EvaluateCityDestruction(c *City, wg *sync.WaitGroup) {
 
 			select {
 			case alien, ok := <-road:
-				if !ok {
+				if !ok || alien.Killed {
 					continue
 				}
 				aliens = append(aliens, alien)
