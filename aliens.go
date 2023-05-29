@@ -12,7 +12,7 @@ import (
 // It has the map of the world and a list with all soldiers. At any moment it knows where are his soldiers and what is
 // the current status of the invasion. It is main manager of the invasion.
 type AlienCommander struct {
-	WorldMap       WorldMap
+	WorldMap       map[string]City
 	Soldiers       []*Alien
 	TrappedAliens  int
 	KilledSoldiers int
@@ -45,7 +45,7 @@ func (ac *AlienCommander) GenerateReportForInvasion() string {
 }
 
 // NewAlienCommander initialize and return a new AlienCommander.
-func NewAlienCommander(wm WorldMap, aliens []*Alien, sitreps chan Sitrep) AlienCommander {
+func NewAlienCommander(wm map[string]City, aliens []*Alien, sitreps chan Sitrep) AlienCommander {
 	return AlienCommander{
 		WorldMap:       wm,
 		Soldiers:       aliens,
@@ -110,7 +110,7 @@ func (ac *AlienCommander) StartNextIteration() {
 	// After issuing all orders, the commander can evaluate the consequences and assess the
 	// damage inflicted upon the cities as a result of these commands.
 	for _, city := range ac.WorldMap.Cities {
-		EvaluateCityDestruction(city, &wg)
+		CheckForIncomingAliens(city, &wg)
 	}
 
 	wg.Wait() // waiting the current iteration of the invasion to finish
@@ -138,7 +138,7 @@ func (ac *AlienCommander) ListenForSitrep() {
 				continue
 			}
 
-			ac.WorldMap.CleanCity(report.CityName)
+			ac.WorldMap.DestroyCity(report.CityName)
 			ac.Soldiers[report.From].Killed = true
 			ac.KilledSoldiers++
 			ac.WorldMap.Cities[report.CityName].Alien = nil
@@ -222,11 +222,11 @@ type Alien struct {
 // Sitrep or situation report is used by aliens/soldiers to send reports about evaluations of the invasion.
 type Sitrep struct {
 	// From contains the id of the soldier/alien that sends the report
-	From int
+	FromAliens []Alien
 
 	// CityName is the name of the city from where this report is send
 	CityName string
 
-	// IsCityDestroyed give information to the commander whether the city is destroyed.
-	IsCityDestroyed bool
+	//// IsCityDestroyed give information to the commander whether the city is destroyed.
+	//IsCityDestroyed bool
 }

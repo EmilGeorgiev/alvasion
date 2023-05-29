@@ -80,28 +80,25 @@ import (
 func TestListenForSitrepWhenCityIsDestroyed(t *testing.T) {
 	sitreps := make(chan alvasion.Sitrep)
 	done := make(chan struct{})
+	a := alvasion.Alien{
+		ID:      0,
+		Sitreps: sitreps,
+		Killed:  false,
+		Trapped: false,
+	}
 	ac := &alvasion.AlienCommander{
 		Sitreps: sitreps,
-		WorldMap: alvasion.WorldMap{Cities: map[string]*alvasion.City{
-			"X1": {
-				Name:        "X1",
-				IsDestroyed: false,
-			},
-		}},
-		Soldiers: []*alvasion.Alien{{
-			ID:      0,
-			Sitreps: sitreps,
-			Killed:  false,
-			Trapped: false,
-		}},
+		WorldMap: map[string]alvasion.City{
+			"X1": {Name: "X1", IsDestroyed: false},
+		},
+		Soldiers:      []*alvasion.Alien{&a},
 		IterationDone: done,
 	}
 
 	go func() {
 		sitreps <- alvasion.Sitrep{
-			From:            0,
-			CityName:        "X1",
-			IsCityDestroyed: true,
+			FromAliens: []alvasion.Alien{a},
+			CityName:   "X1",
 		}
 		ac.IterationDone <- struct{}{}
 	}()
@@ -111,35 +108,32 @@ func TestListenForSitrepWhenCityIsDestroyed(t *testing.T) {
 	// ASSERTIONS
 	expectedCity := alvasion.City{Name: "X1", IsDestroyed: true}
 
-	assert.Equal(t, &expectedCity, ac.WorldMap.Cities["X1"])
+	assert.Equal(t, &expectedCity, ac.WorldMap["X1"])
 	assert.True(t, ac.Soldiers[0].Killed)
 }
 
 func TestListenForSitrepWhenCityIsNOTDestroyed(t *testing.T) {
 	sitreps := make(chan alvasion.Sitrep)
 	done := make(chan struct{})
+	a := alvasion.Alien{
+		ID:      0,
+		Sitreps: sitreps,
+		Killed:  false,
+		Trapped: false,
+	}
 	ac := &alvasion.AlienCommander{
 		Sitreps: sitreps,
-		WorldMap: alvasion.WorldMap{Cities: map[string]*alvasion.City{
-			"X1": {
-				Name:        "X1",
-				IsDestroyed: false,
-			},
-		}},
-		Soldiers: []*alvasion.Alien{{
-			ID:      0,
-			Sitreps: sitreps,
-			Killed:  false,
-			Trapped: false,
-		}},
+		WorldMap: map[string]alvasion.City{
+			"X1": {Name: "X1", IsDestroyed: false},
+		},
+		Soldiers:      []*alvasion.Alien{&a},
 		IterationDone: done,
 	}
 
 	go func() {
 		sitreps <- alvasion.Sitrep{
-			From:            0,
-			CityName:        "X1",
-			IsCityDestroyed: false,
+			FromAliens: []alvasion.Alien{a},
+			CityName:   "X1",
 		}
 		ac.IterationDone <- struct{}{}
 	}()
@@ -149,7 +143,7 @@ func TestListenForSitrepWhenCityIsNOTDestroyed(t *testing.T) {
 	// ASSERTIONS
 	expectedCity := alvasion.City{Name: "X1", IsDestroyed: false}
 
-	assert.Equal(t, &expectedCity, ac.WorldMap.Cities["X1"])
+	assert.Equal(t, &expectedCity, ac.WorldMap["X1"])
 	assert.False(t, ac.Soldiers[0].Killed)
 }
 

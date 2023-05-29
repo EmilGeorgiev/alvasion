@@ -65,13 +65,11 @@ LOOP:
 	}
 }
 
-func GenerateWorldMap(parts <-chan []string) WorldMap {
-	wm := WorldMap{
-		Cities: map[string]*City{},
-		Roads:  map[string]chan Alien{},
-	}
+func GenerateWorldMap(parts <-chan []string) map[string]City {
+	wolrdMap := map[string]City{}
+
 	for p := range parts {
-		city := &City{
+		city := City{
 			Name:               p[0],
 			IncomingRoads:      make([]chan Alien, 4),
 			OutgoingRoads:      make([]chan Alien, 4),
@@ -87,7 +85,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 				city.OutgoingRoadsNames[0] = r
 				//wm.Roads[road] = outgoing
 
-				cityOnNorth, ok := wm.Cities[rp[1]]
+				cityOnNorth, ok := wolrdMap[rp[1]]
 				if ok {
 					city.IncomingRoads[0] = cityOnNorth.OutgoingRoads[1]
 					cityOnNorth.IncomingRoads[1] = city.OutgoingRoads[0]
@@ -98,7 +96,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 				city.OutgoingRoadsNames[1] = r
 				//wm.Roads[road] = outgoing
 
-				cityOnSouth, ok := wm.Cities[rp[1]]
+				cityOnSouth, ok := wolrdMap[rp[1]]
 				if ok {
 					city.IncomingRoads[1] = cityOnSouth.OutgoingRoads[0]
 					cityOnSouth.IncomingRoads[0] = city.OutgoingRoads[1]
@@ -109,7 +107,7 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 				city.OutgoingRoadsNames[2] = r
 				//wm.Roads[road] = outgoing
 
-				cityOnEast, ok := wm.Cities[rp[1]]
+				cityOnEast, ok := wolrdMap[rp[1]]
 				if ok {
 					city.IncomingRoads[2] = cityOnEast.OutgoingRoads[3]
 					cityOnEast.IncomingRoads[3] = cityOnEast.OutgoingRoads[2]
@@ -120,14 +118,14 @@ func GenerateWorldMap(parts <-chan []string) WorldMap {
 				city.OutgoingRoadsNames[3] = r
 				//wm.Roads[road] = outgoing
 
-				cityOnWest, ok := wm.Cities[rp[1]]
+				cityOnWest, ok := wolrdMap[rp[1]]
 				if ok {
 					city.IncomingRoads[3] = cityOnWest.OutgoingRoads[2]
 					cityOnWest.IncomingRoads[2] = city.OutgoingRoads[3]
 				}
 			}
 		}
-		wm.Cities[city.Name] = city
+		wolrdMap[city.Name] = city
 	}
-	return wm
+	return wolrdMap
 }

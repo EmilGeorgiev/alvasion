@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Tests for CleanCity ----------------------------------
+// Tests for DestroyCity ----------------------------------
 func TestCleanCity(t *testing.T) {
 	// SETUP
 	roadEast := make(chan alvasion.Alien)
@@ -19,7 +19,7 @@ func TestCleanCity(t *testing.T) {
 	}}
 
 	// ACTIONS
-	wm.CleanCity("Foo")
+	wm.DestroyCity("Foo")
 
 	// ASSERTIONS
 	_, openedEast := <-roadEast
@@ -39,7 +39,7 @@ func TestCleanCityThatDoesNotExist(t *testing.T) {
 	}}
 
 	// ACTIONS
-	wm.CleanCity("Not exist")
+	wm.DestroyCity("Not exist")
 	roadEast <- alvasion.Alien{} // prove that channel is opened
 	roadWest <- alvasion.Alien{} // prove that channel is opened
 
@@ -47,14 +47,14 @@ func TestCleanCityThatDoesNotExist(t *testing.T) {
 	assert.False(t, wm.Cities["Foo"].IsDestroyed)
 }
 
-// Tests for EvaluateCityDestruction --------------------
+// Tests for CheckForIncomingAliens --------------------
 func TestEvaluateCityDestructionWhenZeroAliensVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{Name: "Foo"}
 	wg := sync.WaitGroup{}
 
 	// ACTION
-	alvasion.EvaluateCityDestruction(&c, &wg)
+	alvasion.CheckForIncomingAliens(&c, &wg)
 	wg.Wait()
 
 	// ASSERTIONS
@@ -73,7 +73,7 @@ func TestEvaluateCityDestructionWhenOneAlienVisitTheCity(t *testing.T) {
 	c.IncomingRoads[0] <- a
 
 	// ACTION
-	alvasion.EvaluateCityDestruction(&c, &wg)
+	alvasion.CheckForIncomingAliens(&c, &wg)
 	actual := <-a.Sitreps
 	wg.Wait()
 
@@ -104,7 +104,7 @@ func TestEvaluateCityDestructionWhenTwoAliensVisitTheCity(t *testing.T) {
 	c.IncomingRoads[1] <- a100
 
 	// ACTION
-	alvasion.EvaluateCityDestruction(&c, &wg)
+	alvasion.CheckForIncomingAliens(&c, &wg)
 	actualRep55 := <-a55.Sitreps
 	actualRep100 := <-a100.Sitreps
 	wg.Wait()
@@ -139,7 +139,7 @@ func TestEvaluateCityDestructionWhenFourAliensVisitTheCity(t *testing.T) {
 	c.IncomingRoads[3] <- a4
 
 	// ACTION
-	alvasion.EvaluateCityDestruction(&c, &wg)
+	alvasion.CheckForIncomingAliens(&c, &wg)
 	actualRep1 := <-reports
 	actualRep2 := <-reports
 	actualRep3 := <-reports
@@ -175,7 +175,7 @@ func TestEvaluateCityDestructionWhenTwoAliensVisitTheCityThroughTheSameChannel(t
 	c.IncomingRoads[0] <- a2
 
 	// ACTION
-	alvasion.EvaluateCityDestruction(&c, &wg)
+	alvasion.CheckForIncomingAliens(&c, &wg)
 	actualRep1 := <-reports
 	wg.Wait()
 
@@ -184,7 +184,7 @@ func TestEvaluateCityDestructionWhenTwoAliensVisitTheCityThroughTheSameChannel(t
 	assert.Equal(t, expectedRep1, actualRep1)
 }
 
-// Tests for EvaluateRoadsDestruction -------------------
+// Tests for CheckForDestroyedRoads -------------------
 func TestEvaluateRoadsDestructionWhenZeroRoadsAreDestroyed(t *testing.T) {
 	// SETUP
 	northOut := make(chan alvasion.Alien, 1)
