@@ -26,6 +26,7 @@ func (c City) Destroy() City {
 	c.IsDestroyed = true
 	c.Alien = nil
 	c.IncomingRoads = make([]chan Alien, 4) // destroy all incoming roads
+	c.OutgoingRoadsNames = make([]string, 4)
 
 	// destroy all outgoing roads.
 	for i, r := range c.OutgoingRoads {
@@ -36,7 +37,6 @@ func (c City) Destroy() City {
 		// other side that this city is destroyed and this road can be used anymore.
 		close(r)
 		c.OutgoingRoads[i] = nil
-		c.OutgoingRoadsNames[i] = ""
 	}
 	return c
 }
@@ -108,6 +108,7 @@ func (c City) CheckForIncomingAliens(wg *sync.WaitGroup) {
 				if !ok || alien.Killed {
 					continue
 				}
+
 				aliens = append(aliens, alien)
 			default:
 			}
@@ -140,27 +141,23 @@ func (c City) CheckForIncomingAliens(wg *sync.WaitGroup) {
 //
 // Returns:
 //   - City: the updated city with the status of its roads checked and adjusted
-func (c City) CheckForDestroyedRoads(wg *sync.WaitGroup) City {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		for i, road := range c.IncomingRoads {
-			// Check each road to see if it has been destroyed
-			select {
-			case _, ok := <-road:
-				if !ok {
-					// If the road is destroyed, remove it from the incoming and outgoing roads
-					// and clear the corresponding name from OutgoingRoadsNames
-					c.IncomingRoads[i] = nil
-					c.OutgoingRoads[i] = nil
-					c.OutgoingRoadsNames[i] = ""
-				}
-				// If there is no destruction status available for this road, continue the loop
-			default:
+func (c City) CheckForDestroyedRoads() City {
+	for i, road := range c.IncomingRoads {
+		// Check each road to see if it has been destroyed
+		select {
+		case _, ok := <-road:
+			if !ok {
+				// If the road is destroyed, remove it from the incoming and outgoing roads
+				// and clear the corresponding name from OutgoingRoadsNames
+				c.IncomingRoads[i] = nil
+				c.OutgoingRoads[i] = nil
+				c.OutgoingRoadsNames[i] = ""
 			}
+			// If there is no destruction status available for this road, continue the loop
+		default:
 		}
-	}()
+	}
+
 	// Return the updated city
 	return c
 }

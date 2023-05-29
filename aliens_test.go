@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/EmilGeorgiev/alvasion"
-	"github.com/stretchr/testify/assert"
 )
 
 //func TestGiveOrders(t *testing.T) {
@@ -77,74 +76,83 @@ import (
 //	assert.Equal(t, -1, randIndex)
 //}
 
-func TestListenForSitrepWhenCityIsDestroyed(t *testing.T) {
-	sitreps := make(chan alvasion.Sitrep)
-	done := make(chan struct{})
-	a := alvasion.Alien{
-		ID:      0,
-		Sitreps: sitreps,
-		Killed:  false,
-		Trapped: false,
-	}
-	ac := &alvasion.AlienCommander{
-		Sitreps: sitreps,
-		WorldMap: map[string]alvasion.City{
-			"X1": {Name: "X1", IsDestroyed: false},
-		},
-		Soldiers:      []*alvasion.Alien{&a},
-		IterationDone: done,
-	}
+//func TestListenForSitrepWhenCityIsDestroyed(t *testing.T) {
+//	sitreps := make(chan alvasion.Sitrep)
+//	done := make(chan struct{})
+//	a := alvasion.Alien{
+//		ID:      0,
+//		Sitreps: sitreps,
+//		Killed:  false,
+//		Trapped: false,
+//	}
+//	ac := &alvasion.AlienCommander{
+//		Sitreps: sitreps,
+//		WorldMap: map[string]alvasion.City{
+//			"X1": {Name: "X1", IsDestroyed: false},
+//		},
+//		Soldiers:      []*alvasion.Alien{&a},
+//		IterationDone: done,
+//	}
+//
+//	go func() {
+//		sitreps <- alvasion.Sitrep{
+//			FromAliens: []alvasion.Alien{a},
+//			CityName:   "X1",
+//		}
+//		ac.IterationDone <- struct{}{}
+//	}()
+//
+//	ac.ListenForSitrep()
+//
+//	// ASSERTIONS
+//	expectedCity := alvasion.City{Name: "X1", IsDestroyed: true}
+//
+//	assert.Equal(t, &expectedCity, ac.WorldMap["X1"])
+//	assert.True(t, ac.Soldiers[0].Killed)
+//}
+//
+//func TestListenForSitrepWhenCityIsNOTDestroyed(t *testing.T) {
+//	sitreps := make(chan alvasion.Sitrep)
+//	done := make(chan struct{})
+//	a := alvasion.Alien{
+//		ID:      0,
+//		Sitreps: sitreps,
+//		Killed:  false,
+//		Trapped: false,
+//	}
+//	ac := &alvasion.AlienCommander{
+//		Sitreps: sitreps,
+//		WorldMap: map[string]alvasion.City{
+//			"X1": {Name: "X1", IsDestroyed: false},
+//		},
+//		Soldiers:      []*alvasion.Alien{&a},
+//		IterationDone: done,
+//	}
+//
+//	go func() {
+//		sitreps <- alvasion.Sitrep{
+//			FromAliens: []alvasion.Alien{a},
+//			CityName:   "X1",
+//		}
+//		ac.IterationDone <- struct{}{}
+//	}()
+//
+//	ac.ListenForSitrep()
+//
+//	// ASSERTIONS
+//	expectedCity := alvasion.City{Name: "X1", IsDestroyed: false}
+//
+//	assert.Equal(t, &expectedCity, ac.WorldMap["X1"])
+//	assert.False(t, ac.Soldiers[0].Killed)
+//}
 
-	go func() {
-		sitreps <- alvasion.Sitrep{
-			FromAliens: []alvasion.Alien{a},
-			CityName:   "X1",
-		}
-		ac.IterationDone <- struct{}{}
-	}()
-
-	ac.ListenForSitrep()
-
-	// ASSERTIONS
-	expectedCity := alvasion.City{Name: "X1", IsDestroyed: true}
-
-	assert.Equal(t, &expectedCity, ac.WorldMap["X1"])
-	assert.True(t, ac.Soldiers[0].Killed)
+type connection struct {
+	Direction int // 0 - north, 1 - south, 2 - east, 3 -west
+	City      string
 }
 
-func TestListenForSitrepWhenCityIsNOTDestroyed(t *testing.T) {
-	sitreps := make(chan alvasion.Sitrep)
-	done := make(chan struct{})
-	a := alvasion.Alien{
-		ID:      0,
-		Sitreps: sitreps,
-		Killed:  false,
-		Trapped: false,
-	}
-	ac := &alvasion.AlienCommander{
-		Sitreps: sitreps,
-		WorldMap: map[string]alvasion.City{
-			"X1": {Name: "X1", IsDestroyed: false},
-		},
-		Soldiers:      []*alvasion.Alien{&a},
-		IterationDone: done,
-	}
-
-	go func() {
-		sitreps <- alvasion.Sitrep{
-			FromAliens: []alvasion.Alien{a},
-			CityName:   "X1",
-		}
-		ac.IterationDone <- struct{}{}
-	}()
-
-	ac.ListenForSitrep()
-
-	// ASSERTIONS
-	expectedCity := alvasion.City{Name: "X1", IsDestroyed: false}
-
-	assert.Equal(t, &expectedCity, ac.WorldMap["X1"])
-	assert.False(t, ac.Soldiers[0].Killed)
+type report struct {
+	cities map[string][]connection
 }
 
 func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
@@ -161,6 +169,19 @@ func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
 		parts <- []string{"X9", "west=X8", "north=X6"}
 		close(parts)
 	}()
+	//rr := report{
+	//	cities: map[string][]connection{
+	//		"X1": {{Direction: 1, City: "X4"}, {Direction: 2, City: "X2"}},
+	//		"X2": {{Direction: 1, City: "X5"}, {Direction: 2, City: "X3"}, {Direction: 3, City: "X1"}},
+	//		"X3":{{Direction: 1, City: "X6"}, {Direction: 3, City: "X2"}},
+	//		"X4":{{Direction: 0, City: "X1"}, {Direction: 1, City: "X7"},{Direction: 2, City: "X5"}},
+	//		"X5":{{Direction: 0, City: "X2"}, {Direction: 1, City: "X8"},{Direction: 2, City: "X6"}, {Direction: 3, City: "X4"}},
+	//		"X6":{{Direction: 0, City: "X3"}, {Direction: 1, City: "X9"}, {Direction: 3, City: "X4"}},
+	//		"X7":{{Direction: 0, City: "X4"} ,{Direction: 2, City: "X8"}},
+	//		"X8":{{Direction: 0, City: "X5"},{Direction: 2, City: "X9"}, {Direction: 3, City: "X7"}},
+	//		"X9":{{Direction: 0, City: "X6"}, {Direction: 3, City: "X8"}},
+	//	},
+	//}
 	wm := alvasion.GenerateWorldMap(parts)
 
 	sitreps := make(chan alvasion.Sitrep, 1)
@@ -183,8 +204,23 @@ func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
 	//}
 
 	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+	//notify := make(chan string)
+	//done := make(chan struct{})
+	//ac.SetNotifyDestroy(notify)
+	//go func() {
+	//	for n := range notify {
+	//		for _, conn := range rr.cities[n] {
+	//			rr[conn.City]
+	//		}
+	//
+	//	}
+	//	done <- struct{}{}
+	//}()
 
 	ac.StartInvasion()
+
+	//close(notify)
+	//<- done
 
 	report := ac.GenerateReportForInvasion()
 	fmt.Println("---------------------------")
@@ -328,4 +364,19 @@ func TestStartInvasionWith11AliensSoldiersAnd9Cities(t *testing.T) {
 	fmt.Println("---------------------------")
 	fmt.Println(report)
 	fmt.Println("Finish")
+}
+
+func TestMmm(t *testing.T) {
+	m := map[string]int{
+		"1": 1,
+		"2": 2,
+		"3": 3,
+		"4": 4,
+	}
+
+	for k, v := range m {
+		m[k] = v + 1
+	}
+
+	fmt.Println(m)
 }

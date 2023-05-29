@@ -204,11 +204,9 @@ func TestCheckForDestroyedRoadsWhenZeroRoadsAreDestroyed(t *testing.T) {
 		IncomingRoads:      []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
 		OutgoingRoadsNames: []string{"north=X1", "south=X2", "east=X3", "west=X4"},
 	}
-	wg := sync.WaitGroup{}
 
 	// ACTION
-	actual := c.CheckForDestroyedRoads(&wg)
-	wg.Wait()
+	actual := c.CheckForDestroyedRoads()
 
 	// ASSERTIONS
 	//// prove that channels are not closed/destroyed
@@ -241,12 +239,10 @@ func TestEvaluateRoadsDestructionWhenOneRoadsIsDestroyed(t *testing.T) {
 		IncomingRoads:      []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
 		OutgoingRoadsNames: []string{"north=X1", "south=X2", "east=X3", "west=X4"},
 	}
-	wg := sync.WaitGroup{}
 
 	// ACTION
 	close(northIn)
-	c.CheckForDestroyedRoads(&wg)
-	wg.Wait()
+	c.CheckForDestroyedRoads()
 
 	// ASSERTIONS
 	// prove that channels are not closed/destroyed
@@ -277,15 +273,13 @@ func TestEvaluateRoadsDestructionWhenAllRoadsAreDestroyed(t *testing.T) {
 		IncomingRoads:      []chan alvasion.Alien{northIn, southIn, eastIn, westIn},
 		OutgoingRoadsNames: []string{"north=X1", "south=X2", "east=X3", "west=X4"},
 	}
-	wg := sync.WaitGroup{}
 
 	// ACTION
 	close(northIn)
 	close(southIn)
 	close(eastIn)
 	close(westIn)
-	c.CheckForDestroyedRoads(&wg)
-	wg.Wait()
+	c.CheckForDestroyedRoads()
 
 	// ASSERTIONS
 	expectedIncoming := make([]chan alvasion.Alien, 4)
