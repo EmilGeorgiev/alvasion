@@ -9,60 +9,68 @@ import (
 )
 
 // Tests for DestroyCity ----------------------------------
-func TestCleanCity(t *testing.T) {
+func TestDestroyCity(t *testing.T) {
 	// SETUP
-	roadEast := make(chan alvasion.Alien)
-	roadWest := make(chan alvasion.Alien)
-	wm := &alvasion.WorldMap{Cities: map[string]*alvasion.City{
-		"Foo": {Name: "Foo", OutgoingRoads: []chan alvasion.Alien{roadEast, roadWest}, IsDestroyed: false},
-		"Baz": {Name: "Baz", OutgoingRoads: []chan alvasion.Alien{make(chan alvasion.Alien)}, IsDestroyed: false},
-	}}
+	outNorth := make(chan alvasion.Alien, 1)
+	outSouth := make(chan alvasion.Alien, 1)
+	cityFoo := alvasion.City{
+		Name:               "Foo",
+		OutgoingRoads:      []chan alvasion.Alien{outNorth, outSouth, nil, nil},
+		IncomingRoads:      []chan alvasion.Alien{make(chan alvasion.Alien), make(chan alvasion.Alien), nil, nil},
+		OutgoingRoadsNames: []string{"north=Baz", "south=Kart"},
+		IsDestroyed:        false,
+		Alien:              &alvasion.Alien{ID: 77},
+	}
 
 	// ACTIONS
-	wm.DestroyCity("Foo")
+	actual := cityFoo.Destroy()
+	_, openedNorth := <-outNorth
+	_, openedSouth := <-outSouth
 
 	// ASSERTIONS
-	_, openedEast := <-roadEast
-	_, openedWest := <-roadWest
-	assert.True(t, wm.Cities["Foo"].IsDestroyed)
-	assert.False(t, openedEast)
-	assert.False(t, openedWest)
-	assert.False(t, wm.Cities["Baz"].IsDestroyed)
+	expected := alvasion.City{
+		Name:               "Foo",
+		OutgoingRoads:      make([]chan alvasion.Alien, 4),
+		IncomingRoads:      make([]chan alvasion.Alien, 4),
+		IsDestroyed:        true,
+		Alien:              nil,
+		OutgoingRoadsNames: make([]string, 4),
+	}
+	assert.Equal(t, expected, actual)
+	assert.False(t, openedNorth)
+	assert.False(t, openedSouth)
 }
 
-func TestCleanCityThatDoesNotExist(t *testing.T) {
+func TestDestroyCityDestroyedCity(t *testing.T) {
 	// SETUP
-	roadEast := make(chan alvasion.Alien, 1)
-	roadWest := make(chan alvasion.Alien, 1)
-	wm := &alvasion.WorldMap{Cities: map[string]*alvasion.City{
-		"Foo": {Name: "Foo", OutgoingRoads: []chan alvasion.Alien{roadEast, roadWest}, IsDestroyed: false},
-	}}
+	c := alvasion.City{Name: "Foo", IsDestroyed: true}
 
 	// ACTIONS
-	wm.DestroyCity("Not exist")
-	roadEast <- alvasion.Alien{} // prove that channel is opened
-	roadWest <- alvasion.Alien{} // prove that channel is opened
+	actual := c.Destroy()
 
 	// ASSERTIONS
-	assert.False(t, wm.Cities["Foo"].IsDestroyed)
+	expected := alvasion.City{
+		Name:        "Foo",
+		IsDestroyed: true,
+	}
+	assert.Equal(t, expected, actual)
 }
 
 // Tests for CheckForIncomingAliens --------------------
-func TestEvaluateCityDestructionWhenZeroAliensVisitTheCity(t *testing.T) {
+func TestCheckForIncomingAliensWhenZeroAliensVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{Name: "Foo"}
 	wg := sync.WaitGroup{}
 
 	// ACTION
-	alvasion.CheckForIncomingAliens(&c, &wg)
+	c.CheckForIncomingAliens(&wg)
 	wg.Wait()
 
 	// ASSERTIONS
-	expected := alvasion.City{Name: "Foo"}
-	assert.Equal(t, expected, c)
+	// this test case assert that the method will not block forever if no aliens are coming.
 }
 
-func TestEvaluateCityDestructionWhenOneAlienVisitTheCity(t *testing.T) {
+func TestCheckForIncomingAliensWhenOneAlienVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
 		Name:          "Foo",
@@ -73,22 +81,19 @@ func TestEvaluateCityDestructionWhenOneAlienVisitTheCity(t *testing.T) {
 	c.IncomingRoads[0] <- a
 
 	// ACTION
-	alvasion.CheckForIncomingAliens(&c, &wg)
+	c.CheckForIncomingAliens(&wg)
 	actual := <-a.Sitreps
 	wg.Wait()
 
 	// ASSERTION
 	expected := alvasion.Sitrep{
-		From:            55,
-		CityName:        "Foo",
-		IsCityDestroyed: false,
+		FromAliens: []alvasion.Alien{a},
+		CityName:   "Foo",
 	}
 	assert.Equal(t, expected, actual)
-	assert.Equal(t, 1, len(c.IncomingRoads))
-	assert.Equal(t, a, c.Alien)
 }
 
-func TestEvaluateCityDestructionWhenTwoAliensVisitTheCity(t *testing.T) {
+func TestCheckForIncomingAliensWhenTwoAliensVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
 		Name: "Baz",
@@ -104,19 +109,16 @@ func TestEvaluateCityDestructionWhenTwoAliensVisitTheCity(t *testing.T) {
 	c.IncomingRoads[1] <- a100
 
 	// ACTION
-	alvasion.CheckForIncomingAliens(&c, &wg)
-	actualRep55 := <-a55.Sitreps
-	actualRep100 := <-a100.Sitreps
+	c.CheckForIncomingAliens(&wg)
+	actual := <-a55.Sitreps
 	wg.Wait()
 
 	// ASSERTION
-	expectedRep55 := alvasion.Sitrep{From: 55, CityName: "Baz", IsCityDestroyed: true}
-	expectedRep100 := alvasion.Sitrep{From: 100, CityName: "Baz", IsCityDestroyed: true}
-	assert.Equal(t, expectedRep55, actualRep55)
-	assert.Equal(t, expectedRep100, actualRep100)
+	expected := alvasion.Sitrep{FromAliens: []alvasion.Alien{a55, a100}, CityName: "Baz"}
+	assert.Equal(t, expected, actual)
 }
 
-func TestEvaluateCityDestructionWhenFourAliensVisitTheCity(t *testing.T) {
+func TestCheckForIncomingAliensWhenFourAliensVisitTheCity(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
 		Name: "Baz",
@@ -139,25 +141,21 @@ func TestEvaluateCityDestructionWhenFourAliensVisitTheCity(t *testing.T) {
 	c.IncomingRoads[3] <- a4
 
 	// ACTION
-	alvasion.CheckForIncomingAliens(&c, &wg)
-	actualRep1 := <-reports
-	actualRep2 := <-reports
-	actualRep3 := <-reports
-	actualRep4 := <-reports
+	c.CheckForIncomingAliens(&wg)
+	actual := <-reports
 	wg.Wait()
+	close(reports)
+	// if the method CheckForIncomingAliens send more than one event, even when we close the channel first values
+	// in the channel will be read and finally the default value end 'false'
+	_, reportsOpened := <-reports
 
 	// ASSERTION
-	expectedRep1 := alvasion.Sitrep{From: 1, CityName: "Baz", IsCityDestroyed: true}
-	expectedRep2 := alvasion.Sitrep{From: 2, CityName: "Baz", IsCityDestroyed: true}
-	expectedRep3 := alvasion.Sitrep{From: 3, CityName: "Baz", IsCityDestroyed: true}
-	expectedRep4 := alvasion.Sitrep{From: 4, CityName: "Baz", IsCityDestroyed: true}
-	assert.Equal(t, expectedRep1, actualRep1)
-	assert.Equal(t, expectedRep2, actualRep2)
-	assert.Equal(t, expectedRep3, actualRep3)
-	assert.Equal(t, expectedRep4, actualRep4)
+	expected := alvasion.Sitrep{FromAliens: []alvasion.Alien{a1, a2, a3, a4}, CityName: "Baz"}
+	assert.Equal(t, expected, actual)
+	assert.False(t, reportsOpened)
 }
 
-func TestEvaluateCityDestructionWhenTwoAliensVisitTheCityThroughTheSameChannel(t *testing.T) {
+func TestCheckForIncomingAliensWhenTwoAliensVisitTheCityThroughTheSameChannel(t *testing.T) {
 	// SETUP
 	c := alvasion.City{
 		Name: "Baz",
@@ -175,17 +173,22 @@ func TestEvaluateCityDestructionWhenTwoAliensVisitTheCityThroughTheSameChannel(t
 	c.IncomingRoads[0] <- a2
 
 	// ACTION
-	alvasion.CheckForIncomingAliens(&c, &wg)
-	actualRep1 := <-reports
+	c.CheckForIncomingAliens(&wg)
+	actual := <-reports
 	wg.Wait()
+	close(reports)
+	// if the method CheckForIncomingAliens send more than one event, even when we close the channel first values
+	// in the channel will be read and finally the default value end 'false'
+	_, isOpened := <-reports
 
 	// ASSERTION
-	expectedRep1 := alvasion.Sitrep{From: 1, CityName: "Baz", IsCityDestroyed: false}
-	assert.Equal(t, expectedRep1, actualRep1)
+	expected := alvasion.Sitrep{FromAliens: []alvasion.Alien{a1}, CityName: "Baz"}
+	assert.Equal(t, expected, actual)
+	assert.False(t, isOpened)
 }
 
 // Tests for CheckForDestroyedRoads -------------------
-func TestEvaluateRoadsDestructionWhenZeroRoadsAreDestroyed(t *testing.T) {
+func TestCheckForDestroyedRoadsWhenZeroRoadsAreDestroyed(t *testing.T) {
 	// SETUP
 	northOut := make(chan alvasion.Alien, 1)
 	southOut := make(chan alvasion.Alien, 1)
@@ -204,21 +207,22 @@ func TestEvaluateRoadsDestructionWhenZeroRoadsAreDestroyed(t *testing.T) {
 	wg := sync.WaitGroup{}
 
 	// ACTION
-	alvasion.EvaluateRoadsDestruction(&c, &wg)
+	actual := c.CheckForDestroyedRoads(&wg)
 	wg.Wait()
 
 	// ASSERTIONS
-	// prove that channels are not closed/destroyed
-	c.OutgoingRoads[0] <- alvasion.Alien{}
-	c.OutgoingRoads[1] <- alvasion.Alien{}
-	c.OutgoingRoads[2] <- alvasion.Alien{}
-	c.OutgoingRoads[3] <- alvasion.Alien{}
-	c.IncomingRoads[0] <- alvasion.Alien{}
-	c.IncomingRoads[1] <- alvasion.Alien{}
-	c.IncomingRoads[2] <- alvasion.Alien{}
-	c.IncomingRoads[3] <- alvasion.Alien{}
+	//// prove that channels are not closed/destroyed
+	//c.OutgoingRoads[0] <- alvasion.Alien{}
+	//c.OutgoingRoads[1] <- alvasion.Alien{}
+	//c.OutgoingRoads[2] <- alvasion.Alien{}
+	//c.OutgoingRoads[3] <- alvasion.Alien{}
+	//c.IncomingRoads[0] <- alvasion.Alien{}
+	//c.IncomingRoads[1] <- alvasion.Alien{}
+	//c.IncomingRoads[2] <- alvasion.Alien{}
+	//c.IncomingRoads[3] <- alvasion.Alien{}
 
-	assert.Equal(t, []string{"north=X1", "south=X2", "east=X3", "west=X4"}, c.OutgoingRoadsNames)
+	assert.Equal(t, c, actual)
+	//assert.Equal(t, []string{"north=X1", "south=X2", "east=X3", "west=X4"}, c.OutgoingRoadsNames)
 }
 
 func TestEvaluateRoadsDestructionWhenOneRoadsIsDestroyed(t *testing.T) {
@@ -241,7 +245,7 @@ func TestEvaluateRoadsDestructionWhenOneRoadsIsDestroyed(t *testing.T) {
 
 	// ACTION
 	close(northIn)
-	alvasion.EvaluateRoadsDestruction(&c, &wg)
+	c.CheckForDestroyedRoads(&wg)
 	wg.Wait()
 
 	// ASSERTIONS
@@ -280,7 +284,7 @@ func TestEvaluateRoadsDestructionWhenAllRoadsAreDestroyed(t *testing.T) {
 	close(southIn)
 	close(eastIn)
 	close(westIn)
-	alvasion.EvaluateRoadsDestruction(&c, &wg)
+	c.CheckForDestroyedRoads(&wg)
 	wg.Wait()
 
 	// ASSERTIONS
