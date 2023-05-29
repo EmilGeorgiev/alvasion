@@ -159,14 +159,9 @@ func (ac *AlienCommander) StartIteration() {
 	// to keep in mind that one road always connect two different cities
 	//wg.Add(len(ac.WorldMap))
 	for _, city := range ac.WorldMap {
-		//go func(c City) {
-		//	defer wg.Done()
 		newC := city.CheckForDestroyedRoads()
 		ac.WorldMap[newC.Name] = newC
-		//}(city)
-
 	}
-	//wg.Wait()
 }
 
 // ListenForSitrep listens for situation reports from the soldiers. It updates the soldiers' statuses and the cities
@@ -177,21 +172,11 @@ func (ac *AlienCommander) ListenForSitrep() {
 	for {
 		select {
 		case report := <-ac.Sitreps:
-			// validateReport ---------
-			if len(report.FromAliens) == 0 {
+			if !ac.validateSitrep(report) {
 				continue
 			}
 
-			city, ok := ac.WorldMap[report.CityName]
-			if !ok {
-				continue
-			}
-
-			if city.IsDestroyed {
-				continue
-			}
-			//-------------------------
-
+			city := ac.WorldMap[report.CityName]
 			if len(report.FromAliens) == 1 {
 				city.Alien = &report.FromAliens[0]
 				ac.WorldMap[report.CityName] = city
@@ -230,6 +215,19 @@ func (ac *AlienCommander) ListenForSitrep() {
 
 func (ac *AlienCommander) StopInvasion() {
 
+}
+
+func (ac *AlienCommander) validateSitrep(report Sitrep) bool {
+	if len(report.FromAliens) == 0 {
+		return false
+	}
+
+	city, ok := ac.WorldMap[report.CityName]
+	if !ok {
+		return false
+	}
+
+	return !city.IsDestroyed
 }
 
 // DistributeAliens distributes the aliens randomly across the cities on the map. This method is used only once before
@@ -297,7 +295,4 @@ type Sitrep struct {
 
 	// CityName is the name of the city from where this report is send
 	CityName string
-
-	//// IsCityDestroyed give information to the commander whether the city is destroyed.
-	//IsCityDestroyed bool
 }
