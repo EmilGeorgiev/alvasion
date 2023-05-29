@@ -30,7 +30,7 @@ func (ac *AlienCommander) GenerateReportForInvasion() string {
 			if road == "" {
 				continue
 			}
-			row = " " + road
+			row += " " + road
 		}
 		buf.WriteString(row + "\n")
 	}

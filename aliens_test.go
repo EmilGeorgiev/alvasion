@@ -153,7 +153,7 @@ func TestListenForSitrepWhenCityIsNOTDestroyed(t *testing.T) {
 	assert.False(t, ac.Soldiers[0].Killed)
 }
 
-func TestStartInvasion(t *testing.T) {
+func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
 	parts := make(chan []string)
 	go func() {
 		parts <- []string{"X1", "east=X2", "south=X4"}
@@ -195,4 +195,143 @@ func TestStartInvasion(t *testing.T) {
 	report := ac.GenerateReportForInvasion()
 	fmt.Println("---------------------------")
 	fmt.Println(report)
+	fmt.Println("Finish")
+}
+
+func TestStartInvasionWith5AliensSoldiersAnd9Cities(t *testing.T) {
+	parts := make(chan []string)
+	go func() {
+		parts <- []string{"X1", "east=X2", "south=X4"}
+		parts <- []string{"X2", "east=X3", "west=X1", "south=X5"}
+		parts <- []string{"X3", "west=X2", "south=X6"}
+		parts <- []string{"X4", "east=X5", "north=X1", "south=X7"}
+		parts <- []string{"X5", "west=X4", "east=X6", "north=X2", "south=X8"}
+		parts <- []string{"X6", "west=X5", "north=X3", "south=X9"}
+		parts <- []string{"X7", "east=X8", "north=X4"}
+		parts <- []string{"X8", "west=X7", "east=X9", "north=X5"}
+		parts <- []string{"X9", "west=X8", "north=X6"}
+		close(parts)
+	}()
+	wm := alvasion.GenerateWorldMap(parts)
+
+	sitreps := make(chan alvasion.Sitrep, 1)
+	aliens := []*alvasion.Alien{
+		{ID: 0, Sitreps: sitreps},
+		{ID: 1, Sitreps: sitreps},
+		{ID: 2, Sitreps: sitreps},
+		{ID: 3, Sitreps: sitreps},
+		{ID: 4, Sitreps: sitreps},
+	}
+
+	//for i := 0; i < 6; i++ {
+	//	aliens[0] = alvasion.Alien{
+	//		ID:      0,
+	//		Sitreps: sitreps,
+	//		Killed:  false,
+	//		Trapped: false,
+	//	}
+	//}
+
+	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+
+	ac.StartInvasion()
+
+	report := ac.GenerateReportForInvasion()
+	fmt.Println("---------------------------")
+	fmt.Println(report)
+	fmt.Println("Finish")
+}
+
+func TestStartInvasionWith1AliensSoldiersAnd9Cities(t *testing.T) {
+	parts := make(chan []string)
+	go func() {
+		parts <- []string{"X1", "east=X2", "south=X4"}
+		parts <- []string{"X2", "east=X3", "west=X1", "south=X5"}
+		parts <- []string{"X3", "west=X2", "south=X6"}
+		parts <- []string{"X4", "east=X5", "north=X1", "south=X7"}
+		parts <- []string{"X5", "west=X4", "east=X6", "north=X2", "south=X8"}
+		parts <- []string{"X6", "west=X5", "north=X3", "south=X9"}
+		parts <- []string{"X7", "east=X8", "north=X4"}
+		parts <- []string{"X8", "west=X7", "east=X9", "north=X5"}
+		parts <- []string{"X9", "west=X8", "north=X6"}
+		close(parts)
+	}()
+	wm := alvasion.GenerateWorldMap(parts)
+
+	sitreps := make(chan alvasion.Sitrep, 1)
+	aliens := []*alvasion.Alien{
+		{ID: 0, Sitreps: sitreps},
+		//{ID: 1, Sitreps: sitreps},
+		//{ID: 2, Sitreps: sitreps},
+		//{ID: 3, Sitreps: sitreps},
+		//{ID: 4, Sitreps: sitreps},
+	}
+
+	//for i := 0; i < 6; i++ {
+	//	aliens[0] = alvasion.Alien{
+	//		ID:      0,
+	//		Sitreps: sitreps,
+	//		Killed:  false,
+	//		Trapped: false,
+	//	}
+	//}
+
+	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+
+	ac.StartInvasion()
+
+	report := ac.GenerateReportForInvasion()
+	fmt.Println("---------------------------")
+	fmt.Println(report)
+	fmt.Println("Finish")
+}
+
+func TestStartInvasionWith11AliensSoldiersAnd9Cities(t *testing.T) {
+	parts := make(chan []string)
+	go func() {
+		parts <- []string{"X1", "east=X2", "south=X4"}
+		parts <- []string{"X2", "east=X3", "west=X1", "south=X5"}
+		parts <- []string{"X3", "west=X2", "south=X6"}
+		parts <- []string{"X4", "east=X5", "north=X1", "south=X7"}
+		parts <- []string{"X5", "west=X4", "east=X6", "north=X2", "south=X8"}
+		parts <- []string{"X6", "west=X5", "north=X3", "south=X9"}
+		parts <- []string{"X7", "east=X8", "north=X4"}
+		parts <- []string{"X8", "west=X7", "east=X9", "north=X5"}
+		parts <- []string{"X9", "west=X8", "north=X6"}
+		close(parts)
+	}()
+	wm := alvasion.GenerateWorldMap(parts)
+
+	sitreps := make(chan alvasion.Sitrep, 1)
+	aliens := []*alvasion.Alien{
+		{ID: 0, Sitreps: sitreps},
+		{ID: 1, Sitreps: sitreps},
+		{ID: 2, Sitreps: sitreps},
+		{ID: 3, Sitreps: sitreps},
+		{ID: 4, Sitreps: sitreps},
+		{ID: 5, Sitreps: sitreps},
+		{ID: 6, Sitreps: sitreps},
+		{ID: 7, Sitreps: sitreps},
+		{ID: 8, Sitreps: sitreps},
+		{ID: 9, Sitreps: sitreps},
+		{ID: 10, Sitreps: sitreps},
+	}
+
+	//for i := 0; i < 6; i++ {
+	//	aliens[0] = alvasion.Alien{
+	//		ID:      0,
+	//		Sitreps: sitreps,
+	//		Killed:  false,
+	//		Trapped: false,
+	//	}
+	//}
+
+	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+
+	ac.StartInvasion()
+
+	report := ac.GenerateReportForInvasion()
+	fmt.Println("---------------------------")
+	fmt.Println(report)
+	fmt.Println("Finish")
 }
