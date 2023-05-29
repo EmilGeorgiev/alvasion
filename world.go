@@ -17,6 +17,7 @@ func (wm WorldMap) CleanCity(name string) {
 	}
 	c.IsDestroyed = true
 
+	c.IncomingRoads = make([]chan Alien, 4)
 	// destroy and all roads leading out and in to the city
 	for i, r := range c.OutgoingRoads {
 		if r == nil {
@@ -40,7 +41,7 @@ type City struct {
 	OutgoingRoads      []chan Alien
 	IncomingRoads      []chan Alien
 	IsDestroyed        bool
-	Alien              Alien
+	Alien              *Alien
 	OutgoingRoadsNames []string
 }
 
@@ -52,8 +53,15 @@ func EvaluateCityDestruction(c *City, wg *sync.WaitGroup) {
 
 		var aliens []Alien
 		for _, road := range c.IncomingRoads {
+			if road == nil {
+				continue
+			}
+
 			select {
-			case alien := <-road:
+			case alien, ok := <-road:
+				if !ok {
+					continue
+				}
 				aliens = append(aliens, alien)
 			default:
 				// No alien is coming from this road in this invasion iteration
@@ -68,14 +76,18 @@ func EvaluateCityDestruction(c *City, wg *sync.WaitGroup) {
 			msg := fmt.Sprintf("%s has been destroyed by alien ", c.Name)
 			for _, a := range aliens {
 				msg += fmt.Sprintf("%d%s", a.ID, " and alien ")
+				if a.Killed {
+					fmt.Println("KILED KILED KILED KILED")
+				}
 				a.Sitreps <- Sitrep{From: a.ID, CityName: c.Name, IsCityDestroyed: true}
 			}
 			fmt.Println(msg[:len(msg)-11] + "!")
+
 			return
 		}
 
 		a := aliens[0]
-		c.Alien = a
+		//c.Alien = &a
 		a.Sitreps <- Sitrep{From: a.ID, CityName: c.Name, IsCityDestroyed: false}
 	}()
 }

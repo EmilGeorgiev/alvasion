@@ -9,7 +9,7 @@ import (
 
 type AlienCommander struct {
 	WorldMap       WorldMap
-	Soldiers       []Alien
+	Soldiers       []*Alien
 	TrappedAliens  int
 	KilledSoldiers int
 	Sitreps        chan Sitrep
@@ -18,10 +18,6 @@ type AlienCommander struct {
 	IterationDone chan struct{}
 	wg            sync.WaitGroup
 }
-
-//var idxDirectionMap = map[int]string{
-//	0: "north"
-//}
 
 func (ac *AlienCommander) GenerateReportForInvasion() string {
 	buf := bytes.NewBufferString("")
@@ -39,10 +35,10 @@ func (ac *AlienCommander) GenerateReportForInvasion() string {
 		buf.WriteString(row + "\n")
 	}
 
-	return ""
+	return buf.String()
 }
 
-func NewAlienCommander(wm WorldMap, aliens []Alien, sitreps chan Sitrep) AlienCommander {
+func NewAlienCommander(wm WorldMap, aliens []*Alien, sitreps chan Sitrep) AlienCommander {
 	return AlienCommander{
 		WorldMap:       wm,
 		Soldiers:       aliens,
@@ -53,9 +49,14 @@ func NewAlienCommander(wm WorldMap, aliens []Alien, sitreps chan Sitrep) AlienCo
 	}
 }
 
-func (ac *AlienCommander) GiveOrdersToTheAlienIn(c City) {
+func (ac *AlienCommander) GiveOrdersToTheAlienIn(c *City) {
 	// if in the city there is an alien, then the commander will give orders to him
-	if c.Alien.Sitreps == nil {
+	if c.Alien == nil || c.IsDestroyed {
+		c.Alien = nil
+		return
+	}
+
+	if s := ac.Soldiers[c.Alien.ID]; s.Killed || s.Trapped {
 		return
 	}
 
@@ -74,45 +75,39 @@ func (ac *AlienCommander) GiveOrdersToTheAlienIn(c City) {
 
 	// The commander selects a random active outgoing road and orders the alien to take that road.
 	i := rand.Intn(len(availableRoads))
+	availableRoads[i] <- *c.Alien
+	fmt.Println("Give prders to:", c.Alien.ID)
 
-	availableRoads[i] <- c.Alien
-
+	c.Alien = nil
 }
 
 func (ac *AlienCommander) StartNextIteration() {
 	wg := sync.WaitGroup{}
-	fmt.Println("00000000000000000000000000")
+
 	// give orders to all soldiers
 	for _, city := range ac.WorldMap.Cities {
-		ac.GiveOrdersToTheAlienIn(*city)
+		ac.GiveOrdersToTheAlienIn(city)
 	}
 
-	fmt.Println("1111111111111111111111111111")
 	// prepare to listen for incoming situation reports about the evaluation of the invasion
 	go ac.ListenForSitrep()
 
-	fmt.Println("22222222222222222222222")
 	// After issuing all orders, the commander can evaluate the consequences and assess the
 	// damage inflicted upon the cities as a result of these commands.
 	for _, city := range ac.WorldMap.Cities {
 		EvaluateCityDestruction(city, &wg)
 	}
 
-	fmt.Println("33333333333333333333")
 	wg.Wait() // waiting the current iteration of the invasion to finish
-	fmt.Println("4444444444444444444")
 	// send signal to notify that the iteration is finished. The commander should prepare the next iteration.
 	ac.IterationDone <- struct{}{} // this will stop the sitrep listener, because no more reports will be sent
-	fmt.Println("55555555555555555")
 	// when a city is destroyed all roads leading out or in of the town also should be destroyed. It is important
 	// to keep in mind that one road always connect two different cities
+	wg2 := sync.WaitGroup{}
 	for _, city := range ac.WorldMap.Cities {
-		EvaluateRoadsDestruction(city, &wg)
+		EvaluateRoadsDestruction(city, &wg2)
 	}
-	fmt.Println("666666666666666666666666")
-	wg.Wait()
-	fmt.Println("777777777777777777")
-
+	wg2.Wait()
 }
 
 func (ac *AlienCommander) ListenForSitrep() {
@@ -120,11 +115,17 @@ func (ac *AlienCommander) ListenForSitrep() {
 		select {
 		case report := <-ac.Sitreps:
 			if !report.IsCityDestroyed {
-				break
+				ac.WorldMap.Cities[report.CityName].Alien = ac.Soldiers[report.From]
+				continue
 			}
 
 			ac.WorldMap.CleanCity(report.CityName)
+			if ac.Soldiers[report.From].Killed {
+				fmt.Println("000000000000000000000000000000000")
+			}
 			ac.Soldiers[report.From].Killed = true
+			ac.KilledSoldiers++
+			ac.WorldMap.Cities[report.CityName].Alien = nil
 		default:
 			// if there is no reports maybe the current iteration of
 			// the invasion finished and all soldiers send their reports.
@@ -173,8 +174,9 @@ func (ac *AlienCommander) StartInvasion() {
 			return
 		}
 
-		if (ac.KilledSoldiers + ac.TrappedAliens) >= len(ac.Soldiers)-1 {
-			fmt.Println("Stop the invasion because less then 2 aliens are alive and not getting trapped.")
+		availableAliens := len(ac.Soldiers) - ac.KilledSoldiers - ac.TrappedAliens
+		if availableAliens < 2 {
+			fmt.Println("Stop the invasion because less then 2 aliens are available.")
 			return
 		}
 	}

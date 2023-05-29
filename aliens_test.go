@@ -88,7 +88,7 @@ func TestListenForSitrepWhenCityIsDestroyed(t *testing.T) {
 				IsDestroyed: false,
 			},
 		}},
-		Soldiers: []alvasion.Alien{{
+		Soldiers: []*alvasion.Alien{{
 			ID:      0,
 			Sitreps: sitreps,
 			Killed:  false,
@@ -126,7 +126,7 @@ func TestListenForSitrepWhenCityIsNOTDestroyed(t *testing.T) {
 				IsDestroyed: false,
 			},
 		}},
-		Soldiers: []alvasion.Alien{{
+		Soldiers: []*alvasion.Alien{{
 			ID:      0,
 			Sitreps: sitreps,
 			Killed:  false,
@@ -170,7 +170,7 @@ func TestStartInvasion(t *testing.T) {
 	wm := alvasion.GenerateWorldMap(parts)
 
 	sitreps := make(chan alvasion.Sitrep, 1)
-	aliens := []alvasion.Alien{
+	aliens := []*alvasion.Alien{
 		{ID: 0, Sitreps: sitreps},
 		{ID: 1, Sitreps: sitreps},
 		{ID: 2, Sitreps: sitreps},
@@ -179,14 +179,14 @@ func TestStartInvasion(t *testing.T) {
 		{ID: 5, Sitreps: sitreps},
 	}
 
-	for i := 0; i < 6; i++ {
-		aliens[0] = alvasion.Alien{
-			ID:      0,
-			Sitreps: sitreps,
-			Killed:  false,
-			Trapped: false,
-		}
-	}
+	//for i := 0; i < 6; i++ {
+	//	aliens[0] = alvasion.Alien{
+	//		ID:      0,
+	//		Sitreps: sitreps,
+	//		Killed:  false,
+	//		Trapped: false,
+	//	}
+	//}
 
 	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
 
