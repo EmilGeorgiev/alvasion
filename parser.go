@@ -7,11 +7,15 @@ import (
 	"strings"
 )
 
+// Line is a struct representing a line from the file
+// with its corresponding number and text.
 type Line struct {
 	Text   string
 	Number int64
 }
 
+// ReadLines opens a file and reads its lines one by one,
+// sending them to a channel for processing.
 func ReadLines(fileName string, lines chan<- Line) {
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -31,6 +35,8 @@ func ReadLines(fileName string, lines chan<- Line) {
 	close(lines)
 }
 
+// ValidateLines reads lines from a channel, validates the format,
+// and splits them into parts for further processing.
 func ValidateLines(lines <-chan Line, p chan<- []string, errs chan<- error) {
 LOOP:
 	for l := range lines {
@@ -65,6 +71,9 @@ LOOP:
 	}
 }
 
+// GenerateWorldMap creates a world map from the validated parts.
+// It reads parts from a channel, and for each part creates a city
+// with its roads, and adds it to the world map.
 func GenerateWorldMap(parts <-chan []string) map[string]City {
 	wolrdMap := map[string]City{}
 
@@ -83,7 +92,6 @@ func GenerateWorldMap(parts <-chan []string) map[string]City {
 				outgoing := make(chan Alien, 1)
 				city.OutgoingRoads[0] = outgoing
 				city.OutgoingRoadsNames[0] = r
-				//wm.Roads[road] = outgoing
 
 				cityOnNorth, ok := wolrdMap[rp[1]]
 				if ok {
@@ -94,7 +102,6 @@ func GenerateWorldMap(parts <-chan []string) map[string]City {
 				outgoing := make(chan Alien, 1)
 				city.OutgoingRoads[1] = outgoing
 				city.OutgoingRoadsNames[1] = r
-				//wm.Roads[road] = outgoing
 
 				cityOnSouth, ok := wolrdMap[rp[1]]
 				if ok {
@@ -105,7 +112,6 @@ func GenerateWorldMap(parts <-chan []string) map[string]City {
 				outgoing := make(chan Alien, 1)
 				city.OutgoingRoads[2] = outgoing
 				city.OutgoingRoadsNames[2] = r
-				//wm.Roads[road] = outgoing
 
 				cityOnEast, ok := wolrdMap[rp[1]]
 				if ok {
@@ -116,7 +122,6 @@ func GenerateWorldMap(parts <-chan []string) map[string]City {
 				outgoing := make(chan Alien, 1)
 				city.OutgoingRoads[3] = outgoing
 				city.OutgoingRoadsNames[3] = r
-				//wm.Roads[road] = outgoing
 
 				cityOnWest, ok := wolrdMap[rp[1]]
 				if ok {

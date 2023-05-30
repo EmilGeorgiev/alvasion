@@ -209,18 +209,7 @@ func TestCheckForDestroyedRoadsWhenZeroRoadsAreDestroyed(t *testing.T) {
 	actual := c.CheckForDestroyedRoads()
 
 	// ASSERTIONS
-	//// prove that channels are not closed/destroyed
-	//c.OutgoingRoads[0] <- alvasion.Alien{}
-	//c.OutgoingRoads[1] <- alvasion.Alien{}
-	//c.OutgoingRoads[2] <- alvasion.Alien{}
-	//c.OutgoingRoads[3] <- alvasion.Alien{}
-	//c.IncomingRoads[0] <- alvasion.Alien{}
-	//c.IncomingRoads[1] <- alvasion.Alien{}
-	//c.IncomingRoads[2] <- alvasion.Alien{}
-	//c.IncomingRoads[3] <- alvasion.Alien{}
-
 	assert.Equal(t, c, actual)
-	//assert.Equal(t, []string{"north=X1", "south=X2", "east=X3", "west=X4"}, c.OutgoingRoadsNames)
 }
 
 func TestEvaluateRoadsDestructionWhenOneRoadsIsDestroyed(t *testing.T) {

@@ -310,7 +310,6 @@ func TestGenerateWorldMap(t *testing.T) {
 	}
 	// 0 (north), 1 (south), 2 (east), 3 (west)
 	parts := make(chan []string)
-	//var wm alvasion.WorldMap
 
 	// ACTION
 	go func() {
