@@ -1,0 +1,9 @@
+X1 east=X2 south=X4
+X2 east=X3 west=X1 south=X5
+X3 west=X2 south=X6
+X4 east=X5 north=X1 south=X7
+X5 west=X4 east=X6 north=X2 south=X8
+X6 west=X5 north=X3 south=X9
+X7 east=X8 north=X4
+X8 west=X7 east=X9 north=X5
+X9 west=X8 north=X6

@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
+	"sync/atomic"
 )
 
 // AlienCommander is a commander of the aliens/soldiers. It is responsible for starting the invasion, distribute
@@ -15,7 +16,7 @@ import (
 type AlienCommander struct {
 	WorldMap       map[string]City
 	Soldiers       []*Alien
-	TrappedAliens  int
+	TrappedAliens  atomic.Int64
 	KilledSoldiers int
 	Sitreps        chan Sitrep
 	NotifyDestroy  chan string
@@ -81,7 +82,7 @@ func NewAlienCommander(wm map[string]City, aliens []*Alien, sitreps chan Sitrep)
 	return AlienCommander{
 		WorldMap:       wm,
 		Soldiers:       aliens,
-		TrappedAliens:  0,
+		TrappedAliens:  atomic.Int64{},
 		KilledSoldiers: 0,
 		Sitreps:        sitreps,
 		IterationDone:  make(chan struct{}),
@@ -115,7 +116,7 @@ func (ac *AlienCommander) GiveOrdersToTheAlienIn(c City) {
 	}
 
 	if availableRoads == nil {
-		ac.TrappedAliens++
+		ac.TrappedAliens.Add(1)
 		return
 	}
 
@@ -148,7 +149,6 @@ func (ac *AlienCommander) StartIteration() {
 	for _, city := range cities {
 		city.CheckForIncomingAliens(&wg)
 	}
-
 	wg.Wait() // waiting the current iteration of the invasion to finish
 
 	// send signal to notify that the iteration is finished. The commander should prepare the next iteration.
@@ -243,6 +243,7 @@ func (ac *AlienCommander) DistributeAliens() {
 		ac.WorldMap[name] = city
 		i++
 	}
+	ac.Soldiers = ac.Soldiers[:i]
 }
 
 // StartInvasion  starts the invasion. It distributes the aliens, then starts a loop of iterations. After each iteration,
@@ -264,10 +265,10 @@ func (ac *AlienCommander) StartInvasion() {
 			return
 		}
 
-		availableAliens := len(ac.Soldiers) - ac.KilledSoldiers - ac.TrappedAliens
+		availableAliens := len(ac.Soldiers) - ac.KilledSoldiers - int(ac.TrappedAliens.Load())
 		if availableAliens < 2 {
 			fmt.Printf("There is %d soldier left. Stop the invasion!\n", availableAliens)
-			fmt.Println("ii: ", ac.iterations)
+			fmt.Println("Number of iterations: ", ac.iterations)
 			return
 		}
 	}

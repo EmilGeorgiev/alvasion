@@ -1,5 +1,0 @@
-Foo west=Baz east=Boo north=Zerty south=Hepp
-Baz east=Foo west=Nzas north=Lkert south=Jjer
-Nzas west=Jett east=Baz north=Poelk south=Xols
-Poelk west=Kass east=Zass north=Pass south=Nzas
-Kk west=Hh east=Ll north=Nn south=Pp

@@ -108,7 +108,6 @@ func (c City) CheckForIncomingAliens(wg *sync.WaitGroup) {
 				if !ok || alien.Killed {
 					continue
 				}
-
 				aliens = append(aliens, alien)
 			default:
 			}
