@@ -2,11 +2,12 @@
 This is a simulation of an alien invasion.
 
 ### Additional Assumptions To The Task
-- One alien can't destroy the city alone. At least 2 aliens MUST be in the city at the same time.
-- If more than 2 aliens are in the city at the same time they destroy the city and themselves.
-- In the beginning, when aliens are randomly distributed to the cities, is not possible to have more than one alien in the same city
-- if aliens are more than cities then aliens will be distributed until al cities has one alien, the rest aliens will not be distributed never.
-- The connections between cities are correct provided in the file. For example if we have "X2 west=X1" then for sure we will have and "X1 east=X2"
+- A city cannot be destroyed by a lone alien; a minimum of two aliens must concurrently inhabit a city to cause its destruction. 
+- If more than two aliens simultaneously inhabit a city, the city will be demolished and the aliens will be annihilated.
+- Initially, when aliens are dispersed randomly among the cities, it is guaranteed that no city will accommodate more than one alien. 
+- If the number of aliens surpasses the number of cities, aliens will be distributed until each city hosts a single alien; any remaining aliens will not be assigned to any city.
+- The city connections are accurately outlined in the provided file. For instance, if a connection is specified as "X2 west=X1", you can be certain that there will also be a connection stated as "X1 east=X2"."
+- The next iteration doesn't start until all aliens finished with their movements and the commander made has updates on the map 
 
 ## Invasion Workflow
 The invasion contains several steps: "Generate The World Map", "Create Alien Commander", "Start the invasion" and "Commander write a report when invasion finished"
@@ -29,7 +30,7 @@ This design approach is beneficial when the source file contains a large number 
 the program can efficiently parse, validate, and transform data, providing an optimized way to generate the world map for 
 the invasion process.
  
-
+```
                                    |---------------|   
                                    | validate line | 
                                    |---------------|
@@ -41,6 +42,8 @@ the invasion process.
                                    |---------------|   
                                    | validate line | 
                                    |---------------|
+
+```
 
 ### Create Alien Commander
 AlienCommander serves as the strategic leader and coordinator of the alien forces during an invasion.

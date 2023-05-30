@@ -1,13 +1,13 @@
-package alvasion_test
+package app_test
 
 import (
 	"bufio"
 	"fmt"
+	"github.com/EmilGeorgiev/alvasion/app"
 	"log"
 	"os"
 	"testing"
 
-	"github.com/EmilGeorgiev/alvasion"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,10 +20,10 @@ func TestReadLines(t *testing.T) {
 		"Poelk west=Kass east=Zass north=Pass south=Nzas",
 		"Kk west=Hh east=Ll north=Nn south=Pp",
 	})
-	lines := make(chan alvasion.Line)
+	lines := make(chan app.Line)
 
 	// ACTION
-	go alvasion.ReadLines("world-map.txt", lines)
+	go app.ReadLines("world-map.txt", lines)
 
 	actualLine1 := <-lines
 	actualLine2 := <-lines
@@ -33,11 +33,11 @@ func TestReadLines(t *testing.T) {
 	actual, ok := <-lines // channel MUST be closed.
 
 	// ASSERTION
-	assert.Equal(t, alvasion.Line{Text: "Foo west=Baz east=Boo north=Zerty south=Hepp", Number: 1}, actualLine1)
-	assert.Equal(t, alvasion.Line{Text: "Baz east=Foo west=Nzas north=Lkert south=Jjer", Number: 2}, actualLine2)
-	assert.Equal(t, alvasion.Line{Text: "Nzas west=Jett east=Baz north=Poelk south=Xols", Number: 3}, actualLine3)
-	assert.Equal(t, alvasion.Line{Text: "Poelk west=Kass east=Zass north=Pass south=Nzas", Number: 4}, actualLine4)
-	assert.Equal(t, alvasion.Line{Text: "Kk west=Hh east=Ll north=Nn south=Pp", Number: 5}, actualLine5)
+	assert.Equal(t, app.Line{Text: "Foo west=Baz east=Boo north=Zerty south=Hepp", Number: 1}, actualLine1)
+	assert.Equal(t, app.Line{Text: "Baz east=Foo west=Nzas north=Lkert south=Jjer", Number: 2}, actualLine2)
+	assert.Equal(t, app.Line{Text: "Nzas west=Jett east=Baz north=Poelk south=Xols", Number: 3}, actualLine3)
+	assert.Equal(t, app.Line{Text: "Poelk west=Kass east=Zass north=Pass south=Nzas", Number: 4}, actualLine4)
+	assert.Equal(t, app.Line{Text: "Kk west=Hh east=Ll north=Nn south=Pp", Number: 5}, actualLine5)
 	assert.Empty(t, actual)
 	assert.False(t, ok) // assert that the channel is closed
 }
@@ -46,7 +46,7 @@ func TestReadLines(t *testing.T) {
 
 func TestValidateCorrectLines(t *testing.T) {
 	// SETUP
-	lines := make(chan alvasion.Line)
+	lines := make(chan app.Line)
 	parts := make(chan []string, 3)
 	errs := make(chan error)
 	var actualErrs []error
@@ -57,11 +57,11 @@ func TestValidateCorrectLines(t *testing.T) {
 	}()
 
 	// ACTION
-	go alvasion.ValidateLines(lines, parts, errs)
+	go app.ValidateLines(lines, parts, errs)
 
-	lines <- alvasion.Line{Text: "Foo west=Baz east=Boo north=Zerty south=Hepp", Number: 1}
-	lines <- alvasion.Line{Text: "Baz east=Foo west=Nzas north=Lkert", Number: 2}
-	lines <- alvasion.Line{Text: "Nzas west=Jett", Number: 3}
+	lines <- app.Line{Text: "Foo west=Baz east=Boo north=Zerty south=Hepp", Number: 1}
+	lines <- app.Line{Text: "Baz east=Foo west=Nzas north=Lkert", Number: 2}
+	lines <- app.Line{Text: "Nzas west=Jett", Number: 3}
 
 	actualPartsForLine1 := <-parts
 	actualPartsForLine2 := <-parts
@@ -76,7 +76,7 @@ func TestValidateCorrectLines(t *testing.T) {
 
 func TestValidateLinesWithNoSpaces(t *testing.T) {
 	// SETUP
-	lines := make(chan alvasion.Line)
+	lines := make(chan app.Line)
 	parts := make(chan []string, 3)
 	errs := make(chan error)
 	done := make(chan bool)
@@ -94,11 +94,11 @@ func TestValidateLinesWithNoSpaces(t *testing.T) {
 	}()
 
 	// ACTION
-	go alvasion.ValidateLines(lines, parts, errs)
+	go app.ValidateLines(lines, parts, errs)
 
-	lines <- alvasion.Line{Text: "Foowest=Bazeast=Boonorth=Zertysouth=Hepp", Number: 1}
-	lines <- alvasion.Line{Text: "Bazeast=Foowest=Nzasnorth=Lkert", Number: 2}
-	lines <- alvasion.Line{Text: "Nzas west=Jett", Number: 3}
+	lines <- app.Line{Text: "Foowest=Bazeast=Boonorth=Zertysouth=Hepp", Number: 1}
+	lines <- app.Line{Text: "Bazeast=Foowest=Nzasnorth=Lkert", Number: 2}
+	lines <- app.Line{Text: "Nzas west=Jett", Number: 3}
 
 	actualPartsForLine3 := <-parts
 
@@ -118,7 +118,7 @@ func TestValidateLinesWithNoSpaces(t *testing.T) {
 
 func TestValidateLineContainsOnlyCityName(t *testing.T) {
 	// SETUP
-	lines := make(chan alvasion.Line)
+	lines := make(chan app.Line)
 	parts := make(chan []string, 3)
 	errs := make(chan error)
 	done := make(chan bool)
@@ -136,10 +136,10 @@ func TestValidateLineContainsOnlyCityName(t *testing.T) {
 	}()
 
 	// ACTION
-	go alvasion.ValidateLines(lines, parts, errs)
+	go app.ValidateLines(lines, parts, errs)
 
-	lines <- alvasion.Line{Text: "Foo", Number: 1}
-	lines <- alvasion.Line{Text: "Nzas west=Jett", Number: 2}
+	lines <- app.Line{Text: "Foo", Number: 1}
+	lines <- app.Line{Text: "Nzas west=Jett", Number: 2}
 
 	actualPartsForLine2 := <-parts
 	close(errs)
@@ -156,7 +156,7 @@ func TestValidateLineContainsOnlyCityName(t *testing.T) {
 
 func TestValidateLineContainsMoreThan5Parts(t *testing.T) {
 	// SETUP
-	lines := make(chan alvasion.Line)
+	lines := make(chan app.Line)
 	parts := make(chan []string, 3)
 	errs := make(chan error)
 	done := make(chan bool)
@@ -174,11 +174,11 @@ func TestValidateLineContainsMoreThan5Parts(t *testing.T) {
 	}()
 
 	// ACTION
-	go alvasion.ValidateLines(lines, parts, errs)
+	go app.ValidateLines(lines, parts, errs)
 
 	// this line contains more than 4 roads leading out of the city
-	lines <- alvasion.Line{Text: "Foo west=Baz east=Boo north=Zerty south=Hepp west=Kop", Number: 1}
-	lines <- alvasion.Line{Text: "Nzas west=Jett", Number: 2}
+	lines <- app.Line{Text: "Foo west=Baz east=Boo north=Zerty south=Hepp west=Kop", Number: 1}
+	lines <- app.Line{Text: "Nzas west=Jett", Number: 2}
 
 	actualPartsForLine2 := <-parts
 	close(errs)
@@ -195,7 +195,7 @@ func TestValidateLineContainsMoreThan5Parts(t *testing.T) {
 
 func TestValidateLinesWithWrongRoadsFormat(t *testing.T) {
 	// SETUP
-	lines := make(chan alvasion.Line)
+	lines := make(chan app.Line)
 	parts := make(chan []string, 3)
 	errs := make(chan error)
 	done := make(chan bool)
@@ -213,14 +213,14 @@ func TestValidateLinesWithWrongRoadsFormat(t *testing.T) {
 	}()
 
 	// ACTION
-	go alvasion.ValidateLines(lines, parts, errs)
+	go app.ValidateLines(lines, parts, errs)
 
 	// this doesn't have sigh '=' in the road eastBoo
-	lines <- alvasion.Line{Text: "Foo west=Baz eastBoo north=Zerty south=Hepp", Number: 1}
+	lines <- app.Line{Text: "Foo west=Baz eastBoo north=Zerty south=Hepp", Number: 1}
 	// this doesn't have sigh '=' in the road northLkert
-	lines <- alvasion.Line{Text: "Baz east=Foo west=Nzas northLkert", Number: 2}
+	lines <- app.Line{Text: "Baz east=Foo west=Nzas northLkert", Number: 2}
 	// this line is correct
-	lines <- alvasion.Line{Text: "Nzas west=Jett", Number: 3}
+	lines <- app.Line{Text: "Nzas west=Jett", Number: 3}
 
 	actualPartsForLine3 := <-parts
 
@@ -239,7 +239,7 @@ func TestValidateLinesWithWrongRoadsFormat(t *testing.T) {
 
 func TestValidateLinesWithWrongRoadDirection(t *testing.T) {
 	// SETUP
-	lines := make(chan alvasion.Line)
+	lines := make(chan app.Line)
 	parts := make(chan []string, 3)
 	errs := make(chan error)
 	done := make(chan bool)
@@ -257,18 +257,18 @@ func TestValidateLinesWithWrongRoadDirection(t *testing.T) {
 	}()
 
 	// ACTION
-	go alvasion.ValidateLines(lines, parts, errs)
+	go app.ValidateLines(lines, parts, errs)
 
 	// in this line the second road has wrong direction 'eastt'. It should be 'east'
-	lines <- alvasion.Line{Text: "Foo west=Baz eastt=Boo north=Zerty south=Hepp", Number: 1}
+	lines <- app.Line{Text: "Foo west=Baz eastt=Boo north=Zerty south=Hepp", Number: 1}
 	// in this line the last road has wrong direction nor. It should be north
-	lines <- alvasion.Line{Text: "Baz east=Foo west=Nzas nor=Lkert", Number: 2}
+	lines <- app.Line{Text: "Baz east=Foo west=Nzas nor=Lkert", Number: 2}
 	// in this line the first road has wrong direction nor. It should be west
-	lines <- alvasion.Line{Text: "Too westt=Baz east=Boo north=Zerty south=Hepp", Number: 3}
+	lines <- app.Line{Text: "Too westt=Baz east=Boo north=Zerty south=Hepp", Number: 3}
 	//in this line the last road has wrong direction nor. It should be south
-	lines <- alvasion.Line{Text: "Dooo west=Baz east=Boo north=Zerty outh=Hepp", Number: 4}
+	lines <- app.Line{Text: "Dooo west=Baz east=Boo north=Zerty outh=Hepp", Number: 4}
 	// this line is correct
-	lines <- alvasion.Line{Text: "Nzas west=Jett", Number: 5}
+	lines <- app.Line{Text: "Nzas west=Jett", Number: 5}
 
 	actualPartsForLine5 := <-parts
 
@@ -324,7 +324,7 @@ func TestGenerateWorldMap(t *testing.T) {
 		parts <- []string{"X9", "west=X8", "north=X6"}
 		close(parts)
 	}()
-	wm := alvasion.GenerateWorldMap(parts)
+	wm := app.GenerateWorldMap(parts)
 
 	// ASSERTIONS
 	for _, c := range cases {
@@ -360,12 +360,12 @@ func TestGenerateWorldMapConnectProperlyCitiesOnDirectionNorthSouth(t *testing.T
 		parts <- []string{"X4", "north=X1"}
 		close(parts)
 	}()
-	wm := alvasion.GenerateWorldMap(parts)
-	expectedAlien1 := alvasion.Alien{ID: 1}
+	wm := app.GenerateWorldMap(parts)
+	expectedAlien1 := app.Alien{ID: 1}
 	wm["X1"].OutgoingRoads[1] <- expectedAlien1
 	actualAlien1 := <-wm["X4"].IncomingRoads[0]
 
-	expectedAlien2 := alvasion.Alien{ID: 2}
+	expectedAlien2 := app.Alien{ID: 2}
 	wm["X4"].OutgoingRoads[0] <- expectedAlien2
 	actualAlien2 := <-wm["X1"].IncomingRoads[1]
 
@@ -386,12 +386,12 @@ func TestGenerateWorldMapConnectProperlyCitiesOnDirectionEastWest(t *testing.T) 
 		parts <- []string{"X2", "west=X1"}
 		close(parts)
 	}()
-	wm := alvasion.GenerateWorldMap(parts)
-	expectedAlien1 := alvasion.Alien{ID: 1}
+	wm := app.GenerateWorldMap(parts)
+	expectedAlien1 := app.Alien{ID: 1}
 	wm["X1"].OutgoingRoads[2] <- expectedAlien1
 	actualAlien1 := <-wm["X2"].IncomingRoads[3]
 
-	expectedAlien2 := alvasion.Alien{ID: 2}
+	expectedAlien2 := app.Alien{ID: 2}
 	wm["X2"].OutgoingRoads[3] <- expectedAlien2
 	actualAlien2 := <-wm["X1"].IncomingRoads[2]
 

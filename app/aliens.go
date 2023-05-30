@@ -1,4 +1,4 @@
-package alvasion
+package app
 
 import (
 	"bytes"

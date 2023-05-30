@@ -4,12 +4,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/EmilGeorgiev/alvasion/app"
 	"io"
 	"log"
 	"os"
 	"sync"
 
-	"github.com/EmilGeorgiev/alvasion"
 	"gopkg.in/yaml.v3"
 )
 
@@ -41,17 +41,17 @@ func main() {
 	log.Println("WorldMap is generated.")
 
 	log.Printf("Initialize %d number of aliens/soldiers.\n", *numberOfAliens)
-	sitrep := make(chan alvasion.Sitrep, 100)
-	aliens := make([]*alvasion.Alien, *numberOfAliens)
+	sitrep := make(chan app.Sitrep, 100)
+	aliens := make([]*app.Alien, *numberOfAliens)
 	for i := 0; i < *numberOfAliens; i++ {
-		aliens[i] = &alvasion.Alien{
+		aliens[i] = &app.Alien{
 			ID:      i,
 			Sitreps: sitrep,
 		}
 	}
 
 	log.Println("Initialize AlienCommander.")
-	ac := alvasion.NewAlienCommander(wm, aliens, sitrep)
+	ac := app.NewAlienCommander(wm, aliens, sitrep)
 
 	log.Println("Start the invasion!")
 	ac.StartInvasion()
@@ -74,9 +74,9 @@ func main() {
 	log.Println("Finish")
 }
 
-func generateWorldMap(config Config) (map[string]alvasion.City, error) {
-	lines := make(chan alvasion.Line, 1000)
-	go alvasion.ReadLines(config.WorldMap, lines)
+func generateWorldMap(config Config) (map[string]app.City, error) {
+	lines := make(chan app.Line, 1000)
+	go app.ReadLines(config.WorldMap, lines)
 
 	errCh := make(chan error)
 	partsOfLine := make(chan []string, 1000)
@@ -84,7 +84,7 @@ func generateWorldMap(config Config) (map[string]alvasion.City, error) {
 	for i := 0; i < config.ValidationWorkers; i++ {
 		wg.Add(1)
 		go func() {
-			alvasion.ValidateLines(lines, partsOfLine, errCh)
+			app.ValidateLines(lines, partsOfLine, errCh)
 			wg.Done()
 		}()
 	}
@@ -102,7 +102,7 @@ func generateWorldMap(config Config) (map[string]alvasion.City, error) {
 		wg.Wait()
 		close(partsOfLine)
 	}()
-	wm := alvasion.GenerateWorldMap(partsOfLine)
+	wm := app.GenerateWorldMap(partsOfLine)
 
 	if hasErr {
 		return nil, errors.New("there are errors during parsing the file that contain cities and their outgoing roads")

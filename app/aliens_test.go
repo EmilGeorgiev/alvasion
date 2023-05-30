@@ -1,151 +1,12 @@
-package alvasion_test
+package app_test
 
 import (
-	"github.com/stretchr/testify/assert"
 	"sort"
 	"testing"
 
-	"github.com/EmilGeorgiev/alvasion"
+	"github.com/EmilGeorgiev/alvasion/app"
+	"github.com/stretchr/testify/assert"
 )
-
-//func TestGiveOrders(t *testing.T) {
-//	north := make(chan alvasion.Alien, 1)
-//	south := make(chan alvasion.Alien, 1)
-//	east := make(chan alvasion.Alien, 1)
-//	west := make(chan alvasion.Alien, 1)
-//
-//	c := alvasion.City{
-//		Name:          "Foo",
-//		OutgoingRoads: []chan alvasion.Alien{north, south, east, west},
-//		IsDestroyed:   false,
-//		Alien:         alvasion.Alien{ID: 55, Sitreps: make(chan alvasion.Sitrep)},
-//	}
-//
-//	al := &alvasion.AlienCommander{}
-//	roadIndex := al.GiveOrdersToTheAlienIn(c)
-//
-//	actual := <-c.OutgoingRoads[roadIndex]
-//
-//	// ASSERTIONS
-//	// approve that the method put only one alien in one randomly picked channel
-//	close(north)
-//	close(south)
-//	close(east)
-//	close(west)
-//	_, northIsOpen := <-north
-//	_, southIsOpen := <-south
-//	_, eastIsOpen := <-east
-//	_, westIsOpen := <-west
-//
-//	assert.Equal(t, 55, actual.ID)
-//	assert.False(t, northIsOpen)
-//	assert.False(t, southIsOpen)
-//	assert.False(t, eastIsOpen)
-//	assert.False(t, westIsOpen)
-//}
-//
-//func TestGiveOrdersIfCityIsNotOccupiedByAlien(t *testing.T) {
-//	north := make(chan alvasion.Alien, 1)
-//	south := make(chan alvasion.Alien, 1)
-//	east := make(chan alvasion.Alien, 1)
-//	west := make(chan alvasion.Alien, 1)
-//
-//	c := alvasion.City{
-//		Name:          "Foo",
-//		OutgoingRoads: []chan alvasion.Alien{north, south, east, west},
-//		IsDestroyed:   false,
-//	}
-//
-//	al := &alvasion.AlienCommander{}
-//	randIndex := al.GiveOrdersToTheAlienIn(c)
-//
-//	// ASSERTIONS
-//	// approve that the method doesn't put an alien in one randomly picked channel
-//	close(north)
-//	close(south)
-//	close(east)
-//	close(west)
-//	_, northIsOpen := <-north
-//	_, southIsOpen := <-south
-//	_, eastIsOpen := <-east
-//	_, westIsOpen := <-west
-//
-//	assert.False(t, northIsOpen)
-//	assert.False(t, southIsOpen)
-//	assert.False(t, eastIsOpen)
-//	assert.False(t, westIsOpen)
-//	assert.Equal(t, -1, randIndex)
-//}
-
-//func TestListenForSitrepWhenCityIsDestroyed(t *testing.T) {
-//	sitreps := make(chan alvasion.Sitrep)
-//	done := make(chan struct{})
-//	a := alvasion.Alien{
-//		ID:      0,
-//		Sitreps: sitreps,
-//		Killed:  false,
-//		Trapped: false,
-//	}
-//	ac := &alvasion.AlienCommander{
-//		Sitreps: sitreps,
-//		WorldMap: map[string]alvasion.City{
-//			"X1": {Name: "X1", IsDestroyed: false},
-//		},
-//		Soldiers:      []*alvasion.Alien{&a},
-//		IterationDone: done,
-//	}
-//
-//	go func() {
-//		sitreps <- alvasion.Sitrep{
-//			FromAliens: []alvasion.Alien{a},
-//			CityName:   "X1",
-//		}
-//		ac.IterationDone <- struct{}{}
-//	}()
-//
-//	ac.ListenForSitrep()
-//
-//	// ASSERTIONS
-//	expectedCity := alvasion.City{Name: "X1", IsDestroyed: true}
-//
-//	assert.Equal(t, &expectedCity, ac.WorldMap["X1"])
-//	assert.True(t, ac.Soldiers[0].Killed)
-//}
-//
-//func TestListenForSitrepWhenCityIsNOTDestroyed(t *testing.T) {
-//	sitreps := make(chan alvasion.Sitrep)
-//	done := make(chan struct{})
-//	a := alvasion.Alien{
-//		ID:      0,
-//		Sitreps: sitreps,
-//		Killed:  false,
-//		Trapped: false,
-//	}
-//	ac := &alvasion.AlienCommander{
-//		Sitreps: sitreps,
-//		WorldMap: map[string]alvasion.City{
-//			"X1": {Name: "X1", IsDestroyed: false},
-//		},
-//		Soldiers:      []*alvasion.Alien{&a},
-//		IterationDone: done,
-//	}
-//
-//	go func() {
-//		sitreps <- alvasion.Sitrep{
-//			FromAliens: []alvasion.Alien{a},
-//			CityName:   "X1",
-//		}
-//		ac.IterationDone <- struct{}{}
-//	}()
-//
-//	ac.ListenForSitrep()
-//
-//	// ASSERTIONS
-//	expectedCity := alvasion.City{Name: "X1", IsDestroyed: false}
-//
-//	assert.Equal(t, &expectedCity, ac.WorldMap["X1"])
-//	assert.False(t, ac.Soldiers[0].Killed)
-//}
 
 type connection struct {
 	DirectionName string // 0 - north, 1 - south, 2 - east, 3 -west
@@ -169,13 +30,13 @@ func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
 	}()
 
 	cities := buildCitiesAndTheirConnections()
-	wm := alvasion.GenerateWorldMap(parts)
-	sitreps := make(chan alvasion.Sitrep, 1)
-	aliens := []*alvasion.Alien{
+	wm := app.GenerateWorldMap(parts)
+	sitreps := make(chan app.Sitrep, 1)
+	aliens := []*app.Alien{
 		{ID: 0, Sitreps: sitreps}, {ID: 1, Sitreps: sitreps}, {ID: 2, Sitreps: sitreps},
 		{ID: 3, Sitreps: sitreps}, {ID: 4, Sitreps: sitreps}, {ID: 5, Sitreps: sitreps},
 	}
-	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+	ac := app.NewAlienCommander(wm, aliens, sitreps)
 	notify := make(chan string)
 	done := make(chan struct{})
 	listenForNotificationsFromAlienCommander(cities, notify, done)
@@ -209,13 +70,13 @@ func TestStartInvasionWith5AliensSoldiersAnd9Cities(t *testing.T) {
 	}()
 
 	cities := buildCitiesAndTheirConnections()
-	wm := alvasion.GenerateWorldMap(parts)
-	sitreps := make(chan alvasion.Sitrep, 1)
-	aliens := []*alvasion.Alien{
+	wm := app.GenerateWorldMap(parts)
+	sitreps := make(chan app.Sitrep, 1)
+	aliens := []*app.Alien{
 		{ID: 0, Sitreps: sitreps}, {ID: 1, Sitreps: sitreps}, {ID: 2, Sitreps: sitreps},
 		{ID: 3, Sitreps: sitreps}, {ID: 4, Sitreps: sitreps},
 	}
-	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+	ac := app.NewAlienCommander(wm, aliens, sitreps)
 	notify := make(chan string)
 	done := make(chan struct{})
 	listenForNotificationsFromAlienCommander(cities, notify, done)
@@ -249,10 +110,10 @@ func TestStartInvasionWith1AliensSoldiersAnd9Cities(t *testing.T) {
 	}()
 
 	cities := buildCitiesAndTheirConnections()
-	wm := alvasion.GenerateWorldMap(parts)
-	sitreps := make(chan alvasion.Sitrep, 1)
-	aliens := []*alvasion.Alien{{ID: 0, Sitreps: sitreps}}
-	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+	wm := app.GenerateWorldMap(parts)
+	sitreps := make(chan app.Sitrep, 1)
+	aliens := []*app.Alien{{ID: 0, Sitreps: sitreps}}
+	ac := app.NewAlienCommander(wm, aliens, sitreps)
 	notify := make(chan string)
 	done := make(chan struct{})
 	listenForNotificationsFromAlienCommander(cities, notify, done)
@@ -285,14 +146,14 @@ func TestStartInvasionWith11AliensSoldiersAnd9Cities(t *testing.T) {
 	}()
 
 	cities := buildCitiesAndTheirConnections()
-	wm := alvasion.GenerateWorldMap(parts)
-	sitreps := make(chan alvasion.Sitrep, 1)
-	aliens := []*alvasion.Alien{
+	wm := app.GenerateWorldMap(parts)
+	sitreps := make(chan app.Sitrep, 1)
+	aliens := []*app.Alien{
 		{ID: 0, Sitreps: sitreps}, {ID: 1, Sitreps: sitreps}, {ID: 2, Sitreps: sitreps}, {ID: 3, Sitreps: sitreps},
 		{ID: 4, Sitreps: sitreps}, {ID: 5, Sitreps: sitreps}, {ID: 6, Sitreps: sitreps}, {ID: 7, Sitreps: sitreps},
 		{ID: 8, Sitreps: sitreps}, {ID: 9, Sitreps: sitreps}, {ID: 10, Sitreps: sitreps},
 	}
-	ac := alvasion.NewAlienCommander(wm, aliens, sitreps)
+	ac := app.NewAlienCommander(wm, aliens, sitreps)
 	notify := make(chan string)
 	done := make(chan struct{})
 	listenForNotificationsFromAlienCommander(cities, notify, done)
