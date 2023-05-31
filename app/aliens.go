@@ -25,7 +25,7 @@ type AlienCommander struct {
 	IterationDone chan struct{}
 	wait          chan struct{}
 	wg            sync.WaitGroup
-	mutex         sync.Mutex
+	//mutex         sync.Mutex
 }
 
 // GenerateReportForInvasion generates a report about the state of the cities after the invasion. It only includes
@@ -269,9 +269,9 @@ func (ac *AlienCommander) StartInvasion() {
 }
 
 func (ac *AlienCommander) updateWorldMap(name string, city City) {
-	ac.mutex.Lock()
+	//ac.mutex.Lock()
 	ac.WorldMap[name] = city
-	ac.mutex.Unlock()
+	//ac.mutex.Unlock()
 }
 
 // Alien represent an alien soldier.
