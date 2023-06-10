@@ -2,25 +2,23 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
-	"github.com/EmilGeorgiev/alvasion/app"
 	"io"
 	"log"
 	"os"
 	"sync"
 
+	"github.com/EmilGeorgiev/alvasion/app"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
 	WorldMap          string `yaml:"world_map"`
 	ValidationWorkers int    `yaml:"validation_workers"`
+	NumberOfAliens    int    `yaml:"number_of_aliens"`
 }
 
 func main() {
-	numberOfAliens := flag.Int("aliens", 5, "the number of aliens soldiers")
-	flag.Parse()
 
 	data, err := os.ReadFile("./config.yaml")
 	if err != nil {
@@ -40,10 +38,10 @@ func main() {
 	}
 	log.Println("WorldMap is generated.")
 
-	log.Printf("Initialize %d number of aliens/soldiers.\n", *numberOfAliens)
+	log.Printf("Initialize %d number of aliens/soldiers.\n", config.NumberOfAliens)
 	sitrep := make(chan app.Sitrep, 100)
-	aliens := make([]*app.Alien, *numberOfAliens)
-	for i := 0; i < *numberOfAliens; i++ {
+	aliens := make([]*app.Alien, config.NumberOfAliens)
+	for i := 0; i < config.NumberOfAliens; i++ {
 		aliens[i] = &app.Alien{
 			ID:      i,
 			Sitreps: sitrep,

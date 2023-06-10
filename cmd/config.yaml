@@ -1,2 +1,3 @@
 world_map: world-map.txt
 validation_workers: 5
+number_of_aliens: 6
