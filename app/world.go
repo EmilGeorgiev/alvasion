@@ -27,7 +27,7 @@ func (c City) Destroy() City {
 	c.Alien = nil
 	c.IncomingRoads = make([]chan Alien, 4) // destroy all incoming roads
 	c.OutgoingRoadsNames = make([]string, 4)
-
+	
 	// destroy all outgoing roads.
 	for i, r := range c.OutgoingRoads {
 		if r == nil {
@@ -66,11 +66,13 @@ type Road struct {
 // City for simplicity we will add a convention that the in/out roads North, South, East,
 // and West will be always in slace's indexes 0 (north), 1 (south), 2 (east), 3 (west).
 type City struct {
+	ID                 int
 	Name               string
 	OutgoingRoads      []chan Alien
 	IncomingRoads      []chan Alien
 	IsDestroyed        bool
 	Alien              *Alien
+	Sitrep             chan Sitrep
 	OutgoingRoadsNames []string
 }
 
@@ -90,36 +92,32 @@ type City struct {
 //
 // This function does not return any value.
 func (c City) CheckForIncomingAliens(wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	defer wg.Done()
+	var aliens []Alien
+	for _, road := range c.IncomingRoads {
+		// If the road does not exist, skip this iteration
+		if road == nil {
+			continue
+		}
 
-		var aliens []Alien
-		for _, road := range c.IncomingRoads {
-			// If the road does not exist, skip this iteration
-			if road == nil {
+		// Check for incoming alien
+		select {
+		case alien, ok := <-road:
+			// If the road is destroyed or the alien is already killed (probably this should not happen), skip this iteration
+			if !ok || alien.Killed {
 				continue
 			}
-
-			// Check for incoming alien
-			select {
-			case alien, ok := <-road:
-				// If the road is destroyed or the alien is already killed (probably this should not happen), skip this iteration
-				if !ok || alien.Killed {
-					continue
-				}
-				aliens = append(aliens, alien)
-			default:
-			}
+			aliens = append(aliens, alien)
+		default:
 		}
+	}
 
-		if len(aliens) == 0 {
-			return
-		}
+	if len(aliens) == 0 {
+		return
+	}
 
-		// If there are one or more aliens, an alien send a situation report to his commander.
-		aliens[0].Sitreps <- Sitrep{FromAliens: aliens, CityName: c.Name}
-	}()
+	// If there are one or more aliens, an alien send a situation report to his commander.
+	c.Sitrep <- Sitrep{FromAliens: aliens, CityName: c.Name, CityID: c.ID}
 }
 
 // CheckForDestroyedRoads checks the status of each incoming road to the city.
@@ -140,7 +138,9 @@ func (c City) CheckForIncomingAliens(wg *sync.WaitGroup) {
 //
 // Returns:
 //   - City: the updated city with the status of its roads checked and adjusted
-func (c City) CheckForDestroyedRoads() City {
+func (c City) CheckForDestroyedRoads(wg *sync.WaitGroup) City {
+	defer wg.Done()
+
 	for i, road := range c.IncomingRoads {
 		// Check each road to see if it has been destroyed
 		select {
@@ -158,5 +158,15 @@ func (c City) CheckForDestroyedRoads() City {
 	}
 
 	// Return the updated city
+	return c
+}
+
+func (c City) SetAlien(a *Alien) City {
+	c.Alien = a
+	return c
+}
+
+func (c City) SetSitrep(sr chan Sitrep) City {
+	c.Sitrep = sr
 	return c
 }

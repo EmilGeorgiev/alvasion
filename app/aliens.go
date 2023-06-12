@@ -3,29 +3,35 @@ package app
 import (
 	"bytes"
 	"fmt"
-	"math/rand"
-	"sort"
+	"io"
 	"sync"
 	"sync/atomic"
 )
+
+type Randomizer interface {
+	ChooseRoad([]chan Alien) chan Alien
+}
 
 // AlienCommander is a commander of the aliens/soldiers. It is responsible for starting the invasion, distribute
 // soldiers around the map, gives orders to which outgoing road the soldiers should continue.
 // It has the map of the world and a list with all soldiers. At any moment it knows where are his soldiers and what is
 // the current status of the invasion. It is main manager of the invasion.
 type AlienCommander struct {
-	WorldMap       map[string]City
-	Soldiers       []*Alien
-	TrappedAliens  atomic.Int64
-	KilledSoldiers int
-	Sitreps        chan Sitrep
-	NotifyDestroy  chan string
+	WorldMap                []City
+	Soldiers                []Alien
+	TrappedAliens           atomic.Int64
+	KilledSoldiers          int
+	Sitreps                 chan Sitrep
+	NotifyDestroy           chan string
+	Randomizer              Randomizer
+	Writer                  io.Writer
+	CurrentIterationReports []Sitrep
 
-	iterations    int
-	IterationDone chan struct{}
-	wait          chan struct{}
-	wg            sync.WaitGroup
-	mutex         sync.Mutex
+	iterations              int
+	StopListeningForReports chan struct{}
+	wait                    chan struct{}
+	wg                      sync.WaitGroup
+	mutex                   sync.Mutex
 }
 
 // GenerateReportForInvasion generates a report about the state of the cities after the invasion. It only includes
@@ -49,45 +55,18 @@ func (ac *AlienCommander) GenerateReportForInvasion() string {
 	return buf.String()
 }
 
-func (ac *AlienCommander) GenerateReportForInvasion2() map[string][]string {
-	var keys []string
-	for k, city := range ac.WorldMap {
-		if city.IsDestroyed {
-			continue
-		}
-		keys = append(keys, k)
-
-	}
-	sort.Strings(keys)
-
-	result := map[string][]string{}
-	for _, name := range keys {
-		city := ac.WorldMap[name]
-		for _, road := range city.OutgoingRoadsNames {
-			if road == "" {
-				continue
-			}
-			result[name] = append(result[name], road)
-		}
-	}
-
-	return result
-}
-
-func (ac *AlienCommander) SetNotifyDestroy(n chan string) {
-	ac.NotifyDestroy = n
-}
-
 // NewAlienCommander initialize and return a new AlienCommander.
-func NewAlienCommander(wm map[string]City, aliens []*Alien, sitreps chan Sitrep) AlienCommander {
+func NewAlienCommander(wm []City, aliens []Alien, sitreps chan Sitrep, r Randomizer, w io.Writer) AlienCommander {
 	return AlienCommander{
-		WorldMap:       wm,
-		Soldiers:       aliens,
-		TrappedAliens:  atomic.Int64{},
-		KilledSoldiers: 0,
-		Sitreps:        sitreps,
-		IterationDone:  make(chan struct{}),
-		wait:           make(chan struct{}),
+		WorldMap:                wm,
+		Soldiers:                aliens,
+		TrappedAliens:           atomic.Int64{},
+		KilledSoldiers:          0,
+		Sitreps:                 sitreps,
+		Randomizer:              r,
+		Writer:                  w,
+		StopListeningForReports: make(chan struct{}),
+		wait:                    make(chan struct{}),
 	}
 }
 
@@ -99,12 +78,13 @@ func NewAlienCommander(wm map[string]City, aliens []*Alien, sitreps chan Sitrep)
 // This method is used in the begging of every invasion iteration. Every iteration starts sending orders to the soldiers.
 func (ac *AlienCommander) GiveOrdersToTheAlienIn(c City) {
 	// if in the city there is an alien, then the commander will give orders to him
-	if c.Alien == nil || c.IsDestroyed {
+	alien := c.Alien
+	if alien == nil || c.IsDestroyed {
 		//c.Alien = nil
 		return
 	}
 
-	if s := ac.Soldiers[c.Alien.ID]; s.Killed || s.Trapped {
+	if s := ac.Soldiers[alien.ID]; s.Killed || s.Trapped {
 		return
 	}
 
@@ -122,8 +102,8 @@ func (ac *AlienCommander) GiveOrdersToTheAlienIn(c City) {
 	}
 
 	// The commander selects a random active outgoing road and orders the alien to take that road.
-	i := rand.Intn(len(availableRoads))
-	availableRoads[i] <- *c.Alien
+	road := ac.Randomizer.ChooseRoad(availableRoads)
+	road <- *alien
 }
 
 // StartIteration starts the next iteration of the invasion. It orders all soldiers to invade, listens for situation
@@ -131,35 +111,33 @@ func (ac *AlienCommander) GiveOrdersToTheAlienIn(c City) {
 //
 // The method is used after the previous iteration is finished.
 func (ac *AlienCommander) StartIteration() {
+	ac.Sitreps = make(chan Sitrep, 1000)
 	wg := sync.WaitGroup{}
 	// give orders to all soldiers
-	var cities []City
-	for k, city := range ac.WorldMap {
+
+	for i, city := range ac.WorldMap {
 		ac.GiveOrdersToTheAlienIn(city)
-		city.Alien = nil
-		ac.updateWorldMap(k, city)
-		cities = append(cities, city)
+		city = city.SetAlien(nil).SetSitrep(ac.Sitreps) // the city will become temporary without alien because the alien will continue to the next city.
+
+		ac.WorldMap[i] = city
 	}
 	// prepare to listen for incoming situation reports about the evaluation of the invasion
+
 	go ac.ListenForSitrep()
 
 	// After issuing all orders, the commander can evaluate the consequences and assess the
 	// damage inflicted upon the cities as a result of these commands.
-	for _, city := range cities {
-		city.CheckForIncomingAliens(&wg)
+	for _, city := range ac.WorldMap {
+		if city.IsDestroyed {
+			continue
+		}
+		wg.Add(1)
+		go city.CheckForIncomingAliens(&wg)
 	}
 	wg.Wait() // waiting the current iteration of the invasion to finish
 	// send signal to notify that the iteration is finished. The commander should prepare the next iteration.
-	ac.IterationDone <- struct{}{} // this will stop the sitrep listener, because no more reports will be sent
-	<-ac.wait
-
-	// when a city is destroyed all roads leading out or in of the town also should be destroyed. It is important
-	// to keep in mind that one road always connect two different cities
-	//wg.Add(len(ac.WorldMap))
-	for _, city := range ac.WorldMap {
-		newC := city.CheckForDestroyedRoads()
-		ac.updateWorldMap(newC.Name, newC)
-	}
+	close(ac.Sitreps) // this will stop the sitrep listener, because no more reports will be sent
+	<-ac.wait         // wait all sitreps to be read from the commander
 }
 
 // ListenForSitrep listens for situation reports from the soldiers. It updates the soldiers' statuses and the cities
@@ -167,48 +145,18 @@ func (ac *AlienCommander) StartIteration() {
 // of the invasion. By this listener the commander know in every step where are his soldiers on the map and which cities
 // are destroyed.
 func (ac *AlienCommander) ListenForSitrep() {
-	for {
-		select {
-		case report := <-ac.Sitreps:
-			if !ac.validateSitrep(report) {
-				continue
-			}
-
-			city := ac.WorldMap[report.CityName]
-			if len(report.FromAliens) == 1 {
-				city.Alien = &report.FromAliens[0]
-				ac.updateWorldMap(report.CityName, city)
-				continue
-			}
-
-			destroyedCity := city.Destroy()
-			ac.updateWorldMap(destroyedCity.Name, destroyedCity)
-			msg := report.CityName + " is destroyed from alien"
-			for _, a := range report.FromAliens {
-				msg += fmt.Sprintf(" %d and alien", a.ID)
-				ac.Soldiers[a.ID].Killed = true
-				ac.KilledSoldiers++
-			}
-			fmt.Println(msg[:len(msg)-10] + "!")
-			if ac.NotifyDestroy != nil {
-				ac.NotifyDestroy <- report.CityName
-			}
-		default:
-			// if there is no reports maybe the current iteration of
-			// the invasion finished and all soldiers send their reports.
+	for report := range ac.Sitreps {
+		if len(report.FromAliens) == 0 {
+			continue
+		}
+		city := ac.WorldMap[report.CityID]
+		if city.IsDestroyed {
+			continue
 		}
 
-		select {
-		case <-ac.IterationDone:
-			// current iteration is finished and all reports, from soldiers, are handled.
-			// we can stop the listener until the next iteration begin.
-			ac.wait <- struct{}{}
-			return
-		default:
-			// the current iteration of the invasion is in progress,
-			// so we are continue to listen for reports from soldiers
-		}
+		ac.CurrentIterationReports = append(ac.CurrentIterationReports, report)
 	}
+	ac.wait <- struct{}{} // indicate that all situation reports are read for the iteration.
 }
 
 func (ac *AlienCommander) validateSitrep(report Sitrep) bool {
@@ -216,11 +164,7 @@ func (ac *AlienCommander) validateSitrep(report Sitrep) bool {
 		return false
 	}
 
-	city, ok := ac.WorldMap[report.CityName]
-	if !ok {
-		return false
-	}
-
+	city := ac.WorldMap[report.CityID]
 	return !city.IsDestroyed
 }
 
@@ -229,12 +173,12 @@ func (ac *AlienCommander) validateSitrep(report Sitrep) bool {
 // than cities, then part of the soldiers will not be distributed.
 func (ac *AlienCommander) DistributeAliens() {
 	var i int
-	for name, city := range ac.WorldMap {
+	for _, city := range ac.WorldMap {
 		if i >= len(ac.Soldiers) {
 			break
 		}
-		city.Alien = ac.Soldiers[i]
-		ac.updateWorldMap(name, city) //ac.WorldMap[name] = city
+		city.Alien = &ac.Soldiers[i]
+		ac.WorldMap[city.ID] = city
 		i++
 	}
 	ac.Soldiers = ac.Soldiers[:i]
@@ -254,6 +198,7 @@ func (ac *AlienCommander) StartInvasion() {
 		ac.StartIteration()
 		ac.iterations++
 
+		ac.applyChangesToWorldMapAfterIteration()
 		if ac.iterations >= 10000 {
 			fmt.Println("Stop the invasion because the 10000 iterations ware made.")
 			return
@@ -268,19 +213,50 @@ func (ac *AlienCommander) StartInvasion() {
 	}
 }
 
-func (ac *AlienCommander) updateWorldMap(name string, city City) {
-	ac.mutex.Lock()
-	ac.WorldMap[name] = city
-	ac.mutex.Unlock()
+func (ac *AlienCommander) applyChangesToWorldMapAfterIteration() {
+	for _, sitrep := range ac.CurrentIterationReports {
+		if len(sitrep.FromAliens) == 0 {
+			city := ac.WorldMap[sitrep.CityID]
+			city = city.SetAlien(nil)
+			ac.WorldMap[city.ID] = city
+		}
+
+		if len(sitrep.FromAliens) == 1 {
+			city := ac.WorldMap[sitrep.CityID]
+			city = city.SetAlien(&sitrep.FromAliens[0])
+			ac.WorldMap[city.ID] = city
+			continue
+		}
+
+		if len(sitrep.FromAliens) > 1 {
+			city := ac.WorldMap[sitrep.CityID]
+			city = city.Destroy()
+			ac.WorldMap[city.ID] = city
+			msg := city.Name + " is destroyed from alien"
+			for _, a := range sitrep.FromAliens {
+				msg += fmt.Sprintf(" %d and alien", a.ID)
+				ac.Soldiers[a.ID].Killed = true
+				ac.KilledSoldiers++
+			}
+			fmt.Fprintln(ac.Writer, msg[:len(msg)-10]+"!")
+		}
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(len(ac.WorldMap))
+	for _, city := range ac.WorldMap {
+		go func(c City) {
+			c = c.CheckForDestroyedRoads(&wg)
+			ac.WorldMap[c.ID] = c
+		}(city)
+	}
+	wg.Wait()
 }
 
 // Alien represent an alien soldier.
 type Alien struct {
 	// ID unique identification of the alien.
 	ID int
-
-	// Sitrep (Situation Report) is used by the alien to describe the current status of an ongoing mission to his commander.
-	Sitreps chan Sitrep
 
 	// Killed shows whether the alien is killed.
 	Killed bool
@@ -296,4 +272,6 @@ type Sitrep struct {
 
 	// CityName is the name of the city from where this report is send
 	CityName string
+
+	CityID int
 }
