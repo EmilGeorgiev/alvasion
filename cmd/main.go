@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
-	log.Println("WorldMap is generated.")
+	log.Println("worldMap is generated.")
 
 	log.Printf("Initialize %d number of aliens/soldiers.\n", config.NumberOfAliens)
 	sitrep := make(chan app.Sitrep, 100)

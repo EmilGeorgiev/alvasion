@@ -78,12 +78,12 @@ package app_test
 //		IncomingRoads: []chan app.Alien{make(chan app.Alien, 1)},
 //	}
 //	wg := sync.WaitGroup{}
-//	a := app.Alien{ID: 55, Sitreps: make(chan app.Sitrep, 1)}
+//	a := app.Alien{ID: 55, sitreps: make(chan app.Sitrep, 1)}
 //	c.IncomingRoads[0] <- a
 //
 //	// ACTION
 //	c.CheckForIncomingAliens(&wg)
-//	actual := <-a.Sitreps
+//	actual := <-a.sitreps
 //	wg.Wait()
 //
 //	// ASSERTION
@@ -104,14 +104,14 @@ package app_test
 //		},
 //	}
 //	wg := sync.WaitGroup{}
-//	a55 := app.Alien{ID: 55, Sitreps: make(chan app.Sitrep, 1)}
+//	a55 := app.Alien{ID: 55, sitreps: make(chan app.Sitrep, 1)}
 //	c.IncomingRoads[0] <- a55
-//	a100 := app.Alien{ID: 100, Sitreps: make(chan app.Sitrep, 1)}
+//	a100 := app.Alien{ID: 100, sitreps: make(chan app.Sitrep, 1)}
 //	c.IncomingRoads[1] <- a100
 //
 //	// ACTION
 //	c.CheckForIncomingAliens(&wg)
-//	actual := <-a55.Sitreps
+//	actual := <-a55.sitreps
 //	wg.Wait()
 //
 //	// ASSERTION
@@ -132,13 +132,13 @@ package app_test
 //	}
 //	wg := sync.WaitGroup{}
 //	reports := make(chan app.Sitrep, 1)
-//	a1 := app.Alien{ID: 1, Sitreps: reports}
+//	a1 := app.Alien{ID: 1, sitreps: reports}
 //	c.IncomingRoads[0] <- a1
-//	a2 := app.Alien{ID: 2, Sitreps: reports}
+//	a2 := app.Alien{ID: 2, sitreps: reports}
 //	c.IncomingRoads[1] <- a2
-//	a3 := app.Alien{ID: 3, Sitreps: reports}
+//	a3 := app.Alien{ID: 3, sitreps: reports}
 //	c.IncomingRoads[2] <- a3
-//	a4 := app.Alien{ID: 4, Sitreps: reports}
+//	a4 := app.Alien{ID: 4, sitreps: reports}
 //	c.IncomingRoads[3] <- a4
 //
 //	// ACTION
@@ -166,11 +166,11 @@ package app_test
 //	}
 //	wg := sync.WaitGroup{}
 //	reports := make(chan app.Sitrep, 2)
-//	a1 := app.Alien{ID: 1, Sitreps: reports}
+//	a1 := app.Alien{ID: 1, sitreps: reports}
 //	c.IncomingRoads[0] <- a1
 //	// Here the Sitrep channel is nil. This means that the test will panic if the Alien 2
 //	// push his report to the channel.
-//	a2 := app.Alien{ID: 2, Sitreps: nil}
+//	a2 := app.Alien{ID: 2, sitreps: nil}
 //	c.IncomingRoads[0] <- a2
 //
 //	// ACTION
