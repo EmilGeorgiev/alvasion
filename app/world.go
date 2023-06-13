@@ -1,6 +1,7 @@
 package app
 
 import (
+	"sort"
 	"sync"
 )
 
@@ -27,7 +28,7 @@ func (c City) Destroy() City {
 	c.Alien = nil
 	c.IncomingRoads = make([]chan Alien, 4) // destroy all incoming roads
 	c.OutgoingRoadsNames = make([]string, 4)
-	
+
 	// destroy all outgoing roads.
 	for i, r := range c.OutgoingRoads {
 		if r == nil {
@@ -115,6 +116,10 @@ func (c City) CheckForIncomingAliens(wg *sync.WaitGroup) {
 	if len(aliens) == 0 {
 		return
 	}
+
+	sort.Slice(aliens, func(i, j int) bool {
+		return aliens[i].ID < aliens[j].ID
+	})
 
 	// If there are one or more aliens, an alien send a situation report to his commander.
 	c.Sitrep <- Sitrep{FromAliens: aliens, CityName: c.Name, CityID: c.ID}

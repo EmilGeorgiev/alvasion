@@ -43,8 +43,7 @@ func main() {
 	aliens := make([]*app.Alien, config.NumberOfAliens)
 	for i := 0; i < config.NumberOfAliens; i++ {
 		aliens[i] = &app.Alien{
-			ID:      i,
-			Sitreps: sitrep,
+			ID: i,
 		}
 	}
 

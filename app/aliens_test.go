@@ -9,9 +9,58 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type connection struct {
-	DirectionName string // 0 - north, 1 - south, 2 - east, 3 -west
-	City          string
+func TestStartInvasionWith9SoldiersAnd9Cities(t *testing.T) {
+	roads := createRoads()
+	worldMap := createWorldMap(roads)
+	aliens := []app.Alien{{ID: 0}, {ID: 1}, {ID: 2}, {ID: 3}, {ID: 4}, {ID: 5}, {ID: 6}, {ID: 7}, {ID: 8}}
+	buf := bytes.NewBufferString("")
+
+	mockRand := new(MockRandomizer)
+	mockMovementsOfThe9Aliens(mockRand, roads)
+
+	commander := app.NewAlienCommander(worldMap, aliens, mockRand, buf)
+	commander.StartInvasion()
+	actualReport := commander.GenerateReportForInvasion()
+
+	expectedReport := "" +
+		"C0 south=C3\n" +
+		"C2 south=C5\n" +
+		"C3 north=C0 south=C6\n" +
+		"C5 north=C2\n" +
+		"C6 north=C3\n"
+
+	assert.Equal(t, expectedReport, actualReport)
+	assert.Contains(t, buf.String(), "C1 is destroyed from alien 0 and alien 2!")
+	assert.Contains(t, buf.String(), "C4 is destroyed from alien 1 and alien 3!")
+	assert.Contains(t, buf.String(), "C7 is destroyed from alien 6 and alien 8!")
+	assert.Contains(t, buf.String(), "C8 is destroyed from alien 5 and alien 7!")
+}
+
+func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
+	roads := createRoads()
+	worldMap := createWorldMap(roads)
+	aliens := []app.Alien{{ID: 0}, {ID: 1}, {ID: 2}, {ID: 3}, {ID: 4}, {ID: 5}}
+	buf := bytes.NewBufferString("")
+
+	mockRand := new(MockRandomizer)
+	mockMovementsOfThe6Aliens(mockRand, roads)
+
+	commander := app.NewAlienCommander(worldMap, aliens, mockRand, buf)
+	commander.StartInvasion()
+	actualReport := commander.GenerateReportForInvasion()
+
+	expectedReport := "" +
+		"C0 south=C3 east=C1\n" +
+		"C1 south=C4 east=C2 west=C0\n" +
+		"C2 south=C5 west=C1\n" +
+		"C3 north=C0 east=C4\n" +
+		"C4 north=C1 east=C5 west=C3\n" +
+		"C5 north=C2 south=C8 west=C4\n" +
+		"C8 north=C5\n"
+
+	assert.Equal(t, expectedReport, actualReport)
+	assert.Contains(t, buf.String(), "C6 is destroyed from alien 0 and alien 4!")
+	assert.Contains(t, buf.String(), "C7 is destroyed from alien 1 and alien 3 and alien 5!")
 }
 
 // createRoads create all roads between cities (incoming and outgoing). For the test we will use 9 cities
@@ -93,13 +142,13 @@ func createWorldMap(roads map[string]chan app.Alien) []app.City {
 			IncomingRoads:      []chan app.Alien{nil, roads["c5c2"], nil, roads["c1c2"]},
 			IsDestroyed:        false,
 			Alien:              nil,
-			OutgoingRoadsNames: []string{"", "south=C5", "", "east=C1"},
+			OutgoingRoadsNames: []string{"", "south=C5", "", "west=C1"},
 		},
 		{
 			ID:                 3,
 			Name:               "C3",
-			OutgoingRoads:      []chan app.Alien{roads["c3c1"], roads["c3c6"], roads["c3c4"], nil},
-			IncomingRoads:      []chan app.Alien{roads["c1c3"], roads["c6c3"], roads["c4c3"], nil},
+			OutgoingRoads:      []chan app.Alien{roads["c3c0"], roads["c3c6"], roads["c3c4"], nil},
+			IncomingRoads:      []chan app.Alien{roads["c0c3"], roads["c6c3"], roads["c4c3"], nil},
 			IsDestroyed:        false,
 			Alien:              nil,
 			OutgoingRoadsNames: []string{"north=C0", "south=C6", "east=C4", ""},
@@ -152,43 +201,18 @@ func createWorldMap(roads map[string]chan app.Alien) []app.City {
 	}
 }
 
-// createAliens create a 9 aliens soldiers.
-func createAliens() ([]app.Alien, chan app.Sitrep) {
-	sitrep := make(chan app.Sitrep)
-	return []app.Alien{
-		{ID: 0},
-		{ID: 1},
-		{ID: 2},
-		{ID: 3},
-		{ID: 4},
-		{ID: 5},
-		{ID: 6},
-		{ID: 7},
-		{ID: 8},
-	}, sitrep
-}
-
-type MockRandomizer struct {
-	mock.Mock
-}
-
-func (m *MockRandomizer) ChooseRoad(roads []chan app.Alien) chan app.Alien {
-	args := m.Called(roads)
-	return args.Get(0).(chan app.Alien)
-}
-
-func mockCommandsOfCommander(m *MockRandomizer, roads map[string]chan app.Alien) {
+func mockMovementsOfThe9Aliens(m *MockRandomizer, roads map[string]chan app.Alien) {
 	// In the beginning the map with aliens looks like that:
 	//	|-------| ←--- |-------| ←--- |-------|
 	//	| C0,a0 |      | C1,a1 |      | C2,a2 |
 	//	|-------| ---→ |-------| ---→ |-------|
-	//	 ↑  |        ↑  |        ↑  |
-	//	 |  ↓        |  ↓        |  ↓
+	//	  ↑  |           ↑  |           ↑  |
+	//	  |  ↓           |  ↓           |  ↓
 	//	|-------| ←--- |-------| ←--- |-------|
 	//	| C3,a3 |      | C4,a4 |      | C5,a5 |
 	//	|-------| ---→ |-------| ---→ |-------|
-	//	 ↑  |        ↑  |        ↑  |
-	//	 |  ↓        |  ↓        |  ↓
+	//	  ↑  |           ↑  |           ↑  |
+	//	  |  ↓           |  ↓           |  ↓
 	//	|-------| ←--- |-------| ←--- |-------|
 	//	| C6,a6 |      | C7,a7 |      | C8,a8 |
 	//	|-------| ---→ |-------| ---→ |-------|
@@ -239,249 +263,94 @@ func mockCommandsOfCommander(m *MockRandomizer, roads map[string]chan app.Alien)
 	// after that the commander MUST stop the invasion because there is only one alien and he can't destroy a city alone.
 }
 
-func TestStartInvasionWith6SoldiersAnd9Cities2(t *testing.T) {
-	roads := createRoads()
-	worldMap := createWorldMap(roads)
-	aliens, sitrep := createAliens()
-	buf := bytes.NewBufferString("")
+func mockMovementsOfThe6Aliens(m *MockRandomizer, roads map[string]chan app.Alien) {
+	// In the beginning the map with aliens looks like that:
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C0,a0 |      | C1,a1 |      | C2,a2 |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//	  ↑  |            ↑  |           ↑  |
+	//	  |  ↓            |  ↓           |  ↓
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C3,a3 |      | C4,a4 |      | C5,a5 |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//	  ↑  |           ↑  |           ↑  |
+	//	  |  ↓           |  ↓           |  ↓
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C6    |      | C7    |      | C8    |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//
+	// the first 6 cities have one alien. The the commander gives this orders to the soldiers:
 
-	mockRand := new(MockRandomizer)
-	mockCommandsOfCommander(mockRand, roads)
+	m.On("ChooseRoad", mock.Anything).Return(roads["c0c3"]).Once() // first alien (a0) move from C0 to C3
+	m.On("ChooseRoad", mock.Anything).Return(roads["c1c4"]).Once() // second alien (a1) move from C1 to C4
+	m.On("ChooseRoad", mock.Anything).Return(roads["c2c5"]).Once() // third alien (a2) move from C2 to C5
+	m.On("ChooseRoad", mock.Anything).Return(roads["c3c6"]).Once() // fourth alien (a3) move from C3 to C6
+	m.On("ChooseRoad", mock.Anything).Return(roads["c4c7"]).Once() // fifth alien (a4) move from C4 to C7
+	m.On("ChooseRoad", mock.Anything).Return(roads["c5c8"]).Once() // sixth alien (a5) move from C5 to C8
 
-	commander := app.NewAlienCommander(worldMap, aliens, sitrep, mockRand, buf)
-	commander.StartInvasion()
-	actualReport := commander.GenerateReportForInvasion()
+	// after above moving of aliens the map will look like that:
+	//	|-------| ←--- |----------| ←--- |----------|
+	//	| C0    |      | C1       |      | C2       |
+	//	|-------| ---→ |----------| ---→ |----------|
+	//	 ↑  |           ↑        |         ↑    |
+	//	 |  ↓           |        ↓         |    ↓
+	//	|-------| ←--- |----------| ←--- |----------|
+	//	| C3,a0 |      | C4,a1    |      | C5,a2    |
+	//	|-------| ---→ |----------| ---→ |----------|
+	//	 ↑  |           ↑        |         ↑    |
+	//	 |  ↓           |        ↓         |    ↓
+	//	|-------| ←--- |----------| ←--- |----------|
+	//	| C6,a3 |      | C7,a4    |      | C8,a5    |
+	//	|-------| ---→ |----------| ---→ |----------|
+	//
+	// This means that after the first iteration No cities will be destroyed because they all have one or zero aliens.
 
-	expectedReport := "" +
-		"C0 south=C3\n" +
-		"C2 south=C5\n" +
-		"C3 north=C0 south=C6\n" +
-		"C5 north=C2\n" +
-		"C6 north=C3\n"
+	// In the second iteration the commander gives these orders:
+	m.On("ChooseRoad", mock.Anything).Return(roads["c3c6"]).Once() // first alien (a0) move from C3 to C6
+	m.On("ChooseRoad", mock.Anything).Return(roads["c4c7"]).Once() // second alien (a1) move from C4 to C7
+	m.On("ChooseRoad", mock.Anything).Return(roads["c5c8"]).Once() // third alien (a2) move from C5 to C8
+	m.On("ChooseRoad", mock.Anything).Return(roads["c6c7"]).Once() // fourth alien (a3) move from C6 to C7
+	m.On("ChooseRoad", mock.Anything).Return(roads["c7c6"]).Once() // fifth alien (a4) move from C7 to C6
+	m.On("ChooseRoad", mock.Anything).Return(roads["c8c7"]).Once() // sixth alien (a5) move from C8 to C7
 
-	//line1, _ := buf.ReadString(0x0A)
-	//line2, _ := buf.ReadString(0x0A)
-	//line3, _ := buf.ReadString(0x0A)
-	//line4, _ := buf.ReadString(0x0A)
+	// after that the aliens will be places like that:
+	//	|----------| ←--- |-------------| ←--- |----------|
+	//	| C0       |      | C1          |      | C2       |
+	//	|----------| ---→ |-------------| ---→ |----------|
+	//	   ↑  |             ↑    |               ↑    |
+	//	   |  ↓             |    ↓               |    ↓
+	//	|----------| ←--- |-------------| ←--- |----------|
+	//	| C3       |      | C4          |      | C5       |
+	//	|----------| ---→ |-------------| ---→ |----------|
+	//	   ↑  |              ↑      |             ↑    |
+	//	   |  ↓              |      ↓             |    ↓
+	//	|----------| ←--- |-------------| ←--- |----------|
+	//	| C6,a0,a4 |      | C7,a1,a3,a5 |      | C8,a2    |
+	//	|----------| ---→ |-------------| ---→ |----------|
+	//
+	// this means that the cities C6 and C7 will be destroyed.
 
-	assert.Equal(t, expectedReport, actualReport)
-	//assert.Equal(t, "C1 is destroyed from alien a0 and alien a2!", line1)
-	//assert.Equal(t, "C4 is destroyed from alien a1 and alien a3!", line2)
-	//assert.Equal(t, "C7 is destroyed from alien a6 and alien a8!", line3)
-	//assert.Equal(t, "C8 is destroyed from alien a5 and alien a7!", line4)
+	//	|----------| ←--- |-------------| ←--- |----------|
+	//	| C0       |      | C1          |      | C2       |
+	//	|----------| ---→ |-------------| ---→ |----------|
+	//	   ↑  |             ↑    |               ↑    |
+	//	   |  ↓             |    ↓               |    ↓
+	//	|----------| ←--- |-------------| ←--- |----------|
+	//	| C3       |      | C4          |      | C5       |
+	//	|----------| ---→ |-------------| ---→ |----------|
+	//	                                          ↑    |
+	//	                                          |    ↓
+	//	                                       |----------|
+	//	                                       | C8,a2    |
+	//	                                       |----------|
+	// after that the commander MUST stop the invasion because there is only one alien (a2) and he can't destroy a city alone.
 }
 
-//func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
-//	// SETUP
-//	parts := make(chan []string)
-//	go func() {
-//		parts <- []string{"X1", "east=X2", "south=X4"}
-//		parts <- []string{"X2", "east=X3", "west=X1", "south=X5"}
-//		parts <- []string{"X3", "west=X2", "south=X6"}
-//		parts <- []string{"X4", "east=X5", "north=X1", "south=X7"}
-//		parts <- []string{"X5", "west=X4", "east=X6", "north=X2", "south=X8"}
-//		parts <- []string{"X6", "west=X5", "north=X3", "south=X9"}
-//		parts <- []string{"X7", "east=X8", "north=X4"}
-//		parts <- []string{"X8", "west=X7", "east=X9", "north=X5"}
-//		parts <- []string{"X9", "west=X8", "north=X6"}
-//		close(parts)
-//	}()
-//
-//	cities := buildCitiesAndTheirConnections()
-//	wm := app.GenerateWorldMap(parts)
-//	sitreps := make(chan app.Sitrep, 1)
-//	aliens := []*app.Alien{
-//		{ID: 0, Sitreps: sitreps}, {ID: 1, Sitreps: sitreps}, {ID: 2, Sitreps: sitreps},
-//		{ID: 3, Sitreps: sitreps}, {ID: 4, Sitreps: sitreps}, {ID: 5, Sitreps: sitreps},
-//	}
-//	ac := app.NewAlienCommander(wm, aliens, sitreps)
-//	notify := make(chan string)
-//	done := make(chan struct{})
-//	listenForNotificationsFromAlienCommander(cities, notify, done)
-//
-//	// ACTION
-//	ac.SetNotifyDestroy(notify)
-//	ac.StartInvasion()
-//	close(notify)
-//	<-done
-//
-//	// ASSERTIONS
-//	actual := ac.GenerateReportForInvasion2()
-//	expected := generateReport(cities)
-//	assert.Equal(t, expected, actual)
-//}
-//
-//func TestStartInvasionWith5AliensSoldiersAnd9Cities(t *testing.T) {
-//	// SETUP
-//	parts := make(chan []string)
-//	go func() {
-//		parts <- []string{"X1", "east=X2", "south=X4"}
-//		parts <- []string{"X2", "east=X3", "west=X1", "south=X5"}
-//		parts <- []string{"X3", "west=X2", "south=X6"}
-//		parts <- []string{"X4", "east=X5", "north=X1", "south=X7"}
-//		parts <- []string{"X5", "west=X4", "east=X6", "north=X2", "south=X8"}
-//		parts <- []string{"X6", "west=X5", "north=X3", "south=X9"}
-//		parts <- []string{"X7", "east=X8", "north=X4"}
-//		parts <- []string{"X8", "west=X7", "east=X9", "north=X5"}
-//		parts <- []string{"X9", "west=X8", "north=X6"}
-//		close(parts)
-//	}()
-//
-//	cities := buildCitiesAndTheirConnections()
-//	wm := app.GenerateWorldMap(parts)
-//	sitreps := make(chan app.Sitrep, 1)
-//	aliens := []*app.Alien{
-//		{ID: 0, Sitreps: sitreps}, {ID: 1, Sitreps: sitreps}, {ID: 2, Sitreps: sitreps},
-//		{ID: 3, Sitreps: sitreps}, {ID: 4, Sitreps: sitreps},
-//	}
-//	ac := app.NewAlienCommander(wm, aliens, sitreps)
-//	notify := make(chan string)
-//	done := make(chan struct{})
-//	listenForNotificationsFromAlienCommander(cities, notify, done)
-//
-//	// ACTION
-//	ac.SetNotifyDestroy(notify)
-//	ac.StartInvasion()
-//	close(notify)
-//	<-done
-//
-//	// ASSERTIONS
-//	actual := ac.GenerateReportForInvasion2()
-//	expected := generateReport(cities)
-//	assert.Equal(t, expected, actual)
-//}
-//
-//func TestStartInvasionWith1AliensSoldiersAnd9Cities(t *testing.T) {
-//	// SETUP
-//	parts := make(chan []string)
-//	go func() {
-//		parts <- []string{"X1", "east=X2", "south=X4"}
-//		parts <- []string{"X2", "east=X3", "west=X1", "south=X5"}
-//		parts <- []string{"X3", "west=X2", "south=X6"}
-//		parts <- []string{"X4", "east=X5", "north=X1", "south=X7"}
-//		parts <- []string{"X5", "west=X4", "east=X6", "north=X2", "south=X8"}
-//		parts <- []string{"X6", "west=X5", "north=X3", "south=X9"}
-//		parts <- []string{"X7", "east=X8", "north=X4"}
-//		parts <- []string{"X8", "west=X7", "east=X9", "north=X5"}
-//		parts <- []string{"X9", "west=X8", "north=X6"}
-//		close(parts)
-//	}()
-//
-//	cities := buildCitiesAndTheirConnections()
-//	wm := app.GenerateWorldMap(parts)
-//	sitreps := make(chan app.Sitrep, 1)
-//	aliens := []*app.Alien{{ID: 0, Sitreps: sitreps}}
-//	ac := app.NewAlienCommander(wm, aliens, sitreps)
-//	notify := make(chan string)
-//	done := make(chan struct{})
-//	listenForNotificationsFromAlienCommander(cities, notify, done)
-//
-//	// ACTION
-//	ac.SetNotifyDestroy(notify)
-//	ac.StartInvasion()
-//	close(notify)
-//	<-done
-//
-//	// ASSERTIONS
-//	actual := ac.GenerateReportForInvasion2()
-//	expected := generateReport(cities)
-//	assert.Equal(t, expected, actual)
-//}
-//
-//func TestStartInvasionWith11AliensSoldiersAnd9Cities(t *testing.T) {
-//	parts := make(chan []string)
-//	go func() {
-//		parts <- []string{"X1", "east=X2", "south=X4"}
-//		parts <- []string{"X2", "east=X3", "west=X1", "south=X5"}
-//		parts <- []string{"X3", "west=X2", "south=X6"}
-//		parts <- []string{"X4", "east=X5", "north=X1", "south=X7"}
-//		parts <- []string{"X5", "west=X4", "east=X6", "north=X2", "south=X8"}
-//		parts <- []string{"X6", "west=X5", "north=X3", "south=X9"}
-//		parts <- []string{"X7", "east=X8", "north=X4"}
-//		parts <- []string{"X8", "west=X7", "east=X9", "north=X5"}
-//		parts <- []string{"X9", "west=X8", "north=X6"}
-//		close(parts)
-//	}()
-//
-//	cities := buildCitiesAndTheirConnections()
-//	wm := app.GenerateWorldMap(parts)
-//	sitreps := make(chan app.Sitrep, 1)
-//	aliens := []*app.Alien{
-//		{ID: 0, Sitreps: sitreps}, {ID: 1, Sitreps: sitreps}, {ID: 2, Sitreps: sitreps}, {ID: 3, Sitreps: sitreps},
-//		{ID: 4, Sitreps: sitreps}, {ID: 5, Sitreps: sitreps}, {ID: 6, Sitreps: sitreps}, {ID: 7, Sitreps: sitreps},
-//		{ID: 8, Sitreps: sitreps}, {ID: 9, Sitreps: sitreps}, {ID: 10, Sitreps: sitreps},
-//	}
-//	ac := app.NewAlienCommander(wm, aliens, sitreps)
-//	notify := make(chan string)
-//	done := make(chan struct{})
-//	listenForNotificationsFromAlienCommander(cities, notify, done)
-//
-//	// ACTION
-//	ac.SetNotifyDestroy(notify)
-//	ac.StartInvasion()
-//	close(notify)
-//	<-done
-//
-//	// ASSERTIONS
-//	actual := ac.GenerateReportForInvasion2()
-//	expected := generateReport(cities)
-//	assert.Equal(t, expected, actual)
-//}
-//
-//func buildCitiesAndTheirConnections() map[string][]*connection {
-//	return map[string][]*connection{
-//		"X1": {{DirectionName: "south=X4", City: "X4"}, {DirectionName: "east=X2", City: "X2"}},
-//		"X2": {{DirectionName: "south=X5", City: "X5"}, {DirectionName: "east=X3", City: "X3"}, {DirectionName: "west=X1", City: "X1"}},
-//		"X3": {{DirectionName: "south=X6", City: "X6"}, {DirectionName: "west=X2", City: "X2"}},
-//		"X4": {{DirectionName: "north=X1", City: "X1"}, {DirectionName: "south=X7", City: "X7"}, {DirectionName: "east=X5", City: "X5"}},
-//		"X5": {{DirectionName: "north=X2", City: "X2"}, {DirectionName: "south=X8", City: "X8"}, {DirectionName: "east=X6", City: "X6"}, {DirectionName: "west=X4", City: "X4"}},
-//		"X6": {{DirectionName: "north=X3", City: "X3"}, {DirectionName: "south=X9", City: "X9"}, {DirectionName: "west=X5", City: "X5"}},
-//		"X7": {{DirectionName: "north=X4", City: "X4"}, {DirectionName: "east=X8", City: "X8"}},
-//		"X8": {{DirectionName: "north=X5", City: "X5"}, {DirectionName: "east=X9", City: "X9"}, {DirectionName: "west=X7", City: "X7"}},
-//		"X9": {{DirectionName: "north=X6", City: "X6"}, {DirectionName: "west=X8", City: "X8"}},
-//	}
-//}
-//
-//func listenForNotificationsFromAlienCommander(cities map[string][]*connection, notify chan string, done chan struct{}) {
-//	go func() {
-//		for n := range notify {
-//			for _, conn := range cities[n] {
-//				if conn == nil {
-//					continue
-//				}
-//				conn2 := cities[conn.City]
-//				for i, c := range conn2 {
-//					if c == nil {
-//						continue
-//					}
-//					if c.City == n {
-//						conn2[i] = nil
-//					}
-//				}
-//			}
-//			delete(cities, n)
-//		}
-//		done <- struct{}{}
-//	}()
-//}
-//
-//func generateReport(cities map[string][]*connection) map[string][]string {
-//	var keys []string
-//	for k, _ := range cities {
-//		keys = append(keys, k)
-//	}
-//	sort.Strings(keys)
-//
-//	result := map[string][]string{}
-//	for _, name := range keys {
-//		connections := cities[name]
-//		for _, road := range connections {
-//			if road == nil {
-//				continue
-//			}
-//			result[name] = append(result[name], road.DirectionName)
-//		}
-//	}
-//
-//	return result
-//}
+type MockRandomizer struct {
+	mock.Mock
+}
+
+func (m *MockRandomizer) ChooseRoad(roads []chan app.Alien) chan app.Alien {
+	args := m.Called(roads)
+	return args.Get(0).(chan app.Alien)
+}

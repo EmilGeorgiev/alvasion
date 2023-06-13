@@ -56,13 +56,12 @@ func (ac *AlienCommander) GenerateReportForInvasion() string {
 }
 
 // NewAlienCommander initialize and return a new AlienCommander.
-func NewAlienCommander(wm []City, aliens []Alien, sitreps chan Sitrep, r Randomizer, w io.Writer) AlienCommander {
+func NewAlienCommander(wm []City, aliens []Alien, r Randomizer, w io.Writer) AlienCommander {
 	return AlienCommander{
 		WorldMap:                wm,
 		Soldiers:                aliens,
 		TrappedAliens:           atomic.Int64{},
 		KilledSoldiers:          0,
-		Sitreps:                 sitreps,
 		Randomizer:              r,
 		Writer:                  w,
 		StopListeningForReports: make(chan struct{}),
@@ -80,7 +79,6 @@ func (ac *AlienCommander) GiveOrdersToTheAlienIn(c City) {
 	// if in the city there is an alien, then the commander will give orders to him
 	alien := c.Alien
 	if alien == nil || c.IsDestroyed {
-		//c.Alien = nil
 		return
 	}
 
@@ -141,7 +139,7 @@ func (ac *AlienCommander) StartIteration() {
 }
 
 // ListenForSitrep listens for situation reports from the soldiers. It updates the soldiers' statuses and the cities
-// based on the reports. This listener is used during the current iteration. Soldiers send sitreps for the evaluation
+// based on the reports. This listeneEqualr is used during the current iteration. Soldiers send sitreps for the evaluation
 // of the invasion. By this listener the commander know in every step where are his soldiers on the map and which cities
 // are destroyed.
 func (ac *AlienCommander) ListenForSitrep() {
