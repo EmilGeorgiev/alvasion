@@ -26,6 +26,7 @@ type AlienCommander struct {
 	randomizer              Randomizer
 	writer                  io.Writer
 	currentIterationReports []Sitrep
+	maxNumberOfIteration    int
 
 	iterations              int
 	stopListeningForReports chan struct{}
@@ -56,7 +57,7 @@ func (ac *AlienCommander) GenerateReportForInvasion() string {
 }
 
 // NewAlienCommander initialize and return a new AlienCommander.
-func NewAlienCommander(wm []City, aliens []Alien, r Randomizer, w io.Writer) AlienCommander {
+func NewAlienCommander(wm []City, aliens []Alien, r Randomizer, w io.Writer, n int) AlienCommander {
 	return AlienCommander{
 		worldMap:                wm,
 		soldiers:                aliens,
@@ -64,6 +65,7 @@ func NewAlienCommander(wm []City, aliens []Alien, r Randomizer, w io.Writer) Ali
 		killedSoldiers:          0,
 		randomizer:              r,
 		writer:                  w,
+		maxNumberOfIteration:    n,
 		stopListeningForReports: make(chan struct{}),
 		wait:                    make(chan struct{}),
 	}
@@ -197,7 +199,7 @@ func (ac *AlienCommander) StartInvasion() {
 		ac.iterations++
 
 		ac.applyChangesToWorldMapAfterIteration()
-		if ac.iterations >= 10000 {
+		if ac.iterations >= ac.maxNumberOfIteration {
 			fmt.Println("Stop the invasion because the 10000 iterations ware made.")
 			return
 		}

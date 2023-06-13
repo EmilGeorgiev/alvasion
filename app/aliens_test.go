@@ -18,7 +18,7 @@ func TestStartInvasionWith9SoldiersAnd9Cities(t *testing.T) {
 	mockRand := new(MockRandomizer)
 	mockMovementsOfThe9Aliens(mockRand, roads)
 
-	commander := app.NewAlienCommander(worldMap, aliens, mockRand, buf)
+	commander := app.NewAlienCommander(worldMap, aliens, mockRand, buf, 10000)
 	commander.StartInvasion()
 	actualReport := commander.GenerateReportForInvasion()
 
@@ -45,7 +45,7 @@ func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
 	mockRand := new(MockRandomizer)
 	mockMovementsOfThe6Aliens(mockRand, roads)
 
-	commander := app.NewAlienCommander(worldMap, aliens, mockRand, buf)
+	commander := app.NewAlienCommander(worldMap, aliens, mockRand, buf, 10000)
 	commander.StartInvasion()
 	actualReport := commander.GenerateReportForInvasion()
 
@@ -61,6 +61,35 @@ func TestStartInvasionWith6SoldiersAnd9Cities(t *testing.T) {
 	assert.Equal(t, expectedReport, actualReport)
 	assert.Contains(t, buf.String(), "C6 is destroyed from alien 0 and alien 4!")
 	assert.Contains(t, buf.String(), "C7 is destroyed from alien 1 and alien 3 and alien 5!")
+}
+
+func TestStopInvasionBecauseReachedMaximumNumberOfIterations(t *testing.T) {
+	roads := createRoads()
+	worldMap := createWorldMap(roads)
+	aliens := []app.Alien{{ID: 0}, {ID: 1}}
+	buf := bytes.NewBufferString("")
+
+	mockRand := new(MockRandomizer)
+	mockMovementsOfThe2Aliens(mockRand, roads)
+
+	maxNumberOfIterations := 2
+	commander := app.NewAlienCommander(worldMap, aliens, mockRand, buf, maxNumberOfIterations)
+	commander.StartInvasion()
+	actualReport := commander.GenerateReportForInvasion()
+
+	expectedReport := "" +
+		"C0 south=C3 east=C1\n" +
+		"C1 south=C4 east=C2 west=C0\n" +
+		"C2 south=C5 west=C1\n" +
+		"C3 north=C0 south=C6 east=C4\n" +
+		"C4 north=C1 south=C7 east=C5 west=C3\n" +
+		"C5 north=C2 south=C8 west=C4\n" +
+		"C6 north=C3 east=C7\n" +
+		"C7 north=C4 east=C8 west=C6\n" +
+		"C8 north=C5 west=C7\n"
+
+	assert.Equal(t, expectedReport, actualReport)
+	assert.Equal(t, "", buf.String())
 }
 
 // createRoads create all roads between cities (incoming and outgoing). For the test we will use 9 cities
@@ -344,6 +373,63 @@ func mockMovementsOfThe6Aliens(m *MockRandomizer, roads map[string]chan app.Alie
 	//	                                       | C8,a2    |
 	//	                                       |----------|
 	// after that the commander MUST stop the invasion because there is only one alien (a2) and he can't destroy a city alone.
+}
+
+func mockMovementsOfThe2Aliens(m *MockRandomizer, roads map[string]chan app.Alien) {
+	// In the beginning the map with aliens looks like that:
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C0,a0 |      | C1,a1 |      | C2    |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//	  ↑  |            ↑  |           ↑  |
+	//	  |  ↓            |  ↓           |  ↓
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C3    |      | C4    |      | C5    |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//	  ↑  |           ↑  |           ↑  |
+	//	  |  ↓           |  ↓           |  ↓
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C6    |      | C7    |      | C8    |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//
+	// the first 2 cities have one alien. The the commander gives this orders to the soldiers:
+
+	m.On("ChooseRoad", mock.Anything).Return(roads["c0c3"]).Once() // first alien (a0) move from C0 to C3
+	m.On("ChooseRoad", mock.Anything).Return(roads["c1c4"]).Once() // second alien (a1) move from C1 to C4
+
+	// after that the map will looks like that:
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C0    |      | C1    |      | C2    |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//	  ↑  |            ↑  |           ↑  |
+	//	  |  ↓            |  ↓           |  ↓
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C3,a0 |      | C4,a1 |      | C5    |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//	  ↑  |           ↑  |           ↑  |
+	//	  |  ↓           |  ↓           |  ↓
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C6    |      | C7    |      | C8    |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//
+
+	m.On("ChooseRoad", mock.Anything).Return(roads["c3c0"]).Once() // first alien (a0) move from C3 to C0
+	m.On("ChooseRoad", mock.Anything).Return(roads["c4c1"]).Once() // second alien (a1) move from C4 to C1
+
+	// now the map looks like that
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C0,a0 |      | C1,a1 |      | C2    |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//	  ↑  |            ↑  |           ↑  |
+	//	  |  ↓            |  ↓           |  ↓
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C3    |      | C4    |      | C5    |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//	  ↑  |           ↑  |           ↑  |
+	//	  |  ↓           |  ↓           |  ↓
+	//	|-------| ←--- |-------| ←--- |-------|
+	//	| C6    |      | C7    |      | C8    |
+	//	|-------| ---→ |-------| ---→ |-------|
+	//
 }
 
 type MockRandomizer struct {
