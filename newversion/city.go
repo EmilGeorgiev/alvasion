@@ -1,11 +1,26 @@
 package newversion
 
+import (
+	"fmt"
+	"io"
+	"log"
+)
+
 type City struct {
+	Name        string
+	Log         io.StringWriter
 	paths       []Path
 	aliens      []Alien
 	isDestroyed bool
+	stop        chan struct{}
+}
 
-	stop chan struct{}
+func NewCity(name string, paths []Path) City {
+	return City{Name: name, paths: paths, stop: stop}
+}
+
+func (c *City) AddAlien(a Alien) {
+	c.aliens = append(c.aliens, a)
 }
 
 func (c *City) Live() {
@@ -42,6 +57,10 @@ func (c *City) destroy() {
 		close(path.OutgoingDirection)
 	}
 	c.isDestroyed = true
+	_, _ = c.Log.WriteString(fmt.Sprintf("%s has been destroyed by alien %s and alien %s!", c.Name, c.aliens[0].Name, c.aliens[1].Name))
+	for _, a := range c.aliens[2:] {
+		log.Println(fmt.Sprintf("Alien %s is in the same city and it is killed too.", a.Name))
+	}
 }
 
 func (c *City) checkPathForIncomingAlien(path Path) (*Alien, bool) {

@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io"
+	"github.com/EmilGeorgiev/alvasion/newversion"
 	"log"
 	"os"
 	"sync"
@@ -39,39 +39,40 @@ func main() {
 	log.Println("worldMap is generated.")
 
 	log.Printf("Initialize %d number of aliens/soldiers.\n", config.NumberOfAliens)
-	sitrep := make(chan app.Sitrep, 100)
-	aliens := make([]*app.Alien, config.NumberOfAliens)
+	aliens := make([]*newversion.Alien, config.NumberOfAliens)
 	for i := 0; i < config.NumberOfAliens; i++ {
-		aliens[i] = &app.Alien{
-			ID: i,
+		aliens[i] = &newversion.Alien{
+			Name: fmt.Sprintf("%d", i),
 		}
 	}
 
-	log.Println("Initialize AlienCommander.")
-	ac := app.NewAlienCommander(wm, aliens, sitrep)
+	wm
 
-	log.Println("Start the invasion!")
-	ac.StartInvasion()
+	//log.Println("Initialize AlienCommander.")
+	//ac := app.NewAlienCommander(wm, aliens, sitrep)
+	//
+	//log.Println("Start the invasion!")
+	//ac.StartInvasion()
 
-	log.Println("Generate the report")
-	report := ac.GenerateReportForInvasion()
+	//log.Println("Generate the report")
+	//report := ac.GenerateReportForInvasion()
 
-	log.Println("Store the report in a file report.txt")
+	//log.Println("Store the report in a file report.txt")
 
-	f, err := os.OpenFile("report.txt", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Fatalf("os.OpenFile error: %v", err)
-	}
-	defer f.Close()
+	//f, err := os.OpenFile("report.txt", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	//if err != nil {
+	//	log.Fatalf("os.OpenFile error: %v", err)
+	//}
+	//defer f.Close()
 
-	_, err = io.WriteString(f, report)
-	if err != nil {
-		log.Fatalf("io.WriteString error: %v", err)
-	}
+	//_, err = io.WriteString(f, report)
+	//if err != nil {
+	//	log.Fatalf("io.WriteString error: %v", err)
+	//}
 	log.Println("Finish")
 }
 
-func generateWorldMap(config Config) (map[string]app.City, error) {
+func generateWorldMap(config Config) (map[string]newversion.City, error) {
 	lines := make(chan app.Line, 1000)
 	go app.ReadLines(config.WorldMap, lines)
 
