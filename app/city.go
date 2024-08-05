@@ -1,4 +1,4 @@
-package newversion
+package app
 
 import (
 	"fmt"
@@ -10,16 +10,16 @@ type City struct {
 	Name        string
 	Log         io.StringWriter
 	paths       []Path
-	aliens      []Alien
+	aliens      []*Alien
 	isDestroyed bool
 	stop        chan struct{}
 }
 
 func NewCity(name string, paths []Path) City {
-	return City{Name: name, paths: paths, stop: stop}
+	return City{Name: name, paths: paths}
 }
 
-func (c *City) AddAlien(a Alien) {
+func (c *City) AddAlien(a *Alien) {
 	c.aliens = append(c.aliens, a)
 }
 
@@ -33,7 +33,7 @@ func (c *City) Live() {
 				continue
 			}
 			if alien != nil {
-				c.aliens = append(c.aliens, *alien)
+				c.aliens = append(c.aliens, alien)
 			}
 			i++
 		}
@@ -47,8 +47,8 @@ func (c *City) Live() {
 		}
 
 		alien := c.aliens[0]
-		c.aliens = []Alien{}
-		alien.choosePath(c.paths)
+		c.aliens = []*Alien{}
+		alien.ChoosePath(c.paths)
 	}
 }
 

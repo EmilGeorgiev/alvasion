@@ -1,4 +1,4 @@
-package newversion
+package app
 
 import (
 	"bufio"
@@ -13,10 +13,6 @@ type Line struct {
 	Text   string
 	Number int64
 }
-
-//type CityInfo struct {
-//	Name string
-//}
 
 // ReadLines opens a file and reads its lines one by one,
 // sending them to a channel for processing.

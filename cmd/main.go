@@ -3,12 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/EmilGeorgiev/alvasion/newversion"
+	"github.com/EmilGeorgiev/alvasion/app"
 	"log"
 	"os"
 	"sync"
 
-	"github.com/EmilGeorgiev/alvasion/app"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,7 +18,6 @@ type Config struct {
 }
 
 func main() {
-
 	data, err := os.ReadFile("./config.yaml")
 	if err != nil {
 		log.Fatalf("Error reading YAML file: %s\n", err)
@@ -39,14 +37,31 @@ func main() {
 	log.Println("worldMap is generated.")
 
 	log.Printf("Initialize %d number of aliens/soldiers.\n", config.NumberOfAliens)
-	aliens := make([]*newversion.Alien, config.NumberOfAliens)
+	aliens := make([]*app.Alien, config.NumberOfAliens)
+	wg := &sync.WaitGroup{}
 	for i := 0; i < config.NumberOfAliens; i++ {
-		aliens[i] = &newversion.Alien{
-			Name: fmt.Sprintf("%d", i),
+		aliens[i] = app.New(fmt.Sprintf("%d", i), 10000, wg)
+	}
+
+	if len(aliens) == 0 {
+		log.Println("There is not aliens")
+		return
+	}
+	index := 0
+Loop:
+	for {
+		for _, city := range wm {
+			a := aliens[index]
+			city.AddAlien(a)
+			a.Start()
+			index++
+			if index >= len(aliens) {
+				break Loop
+			}
 		}
 	}
 
-	wm
+	wg.Wait()
 
 	//log.Println("Initialize AlienCommander.")
 	//ac := app.NewAlienCommander(wm, aliens, sitrep)
@@ -72,7 +87,7 @@ func main() {
 	log.Println("Finish")
 }
 
-func generateWorldMap(config Config) (map[string]newversion.City, error) {
+func generateWorldMap(config Config) (map[string]app.City, error) {
 	lines := make(chan app.Line, 1000)
 	go app.ReadLines(config.WorldMap, lines)
 

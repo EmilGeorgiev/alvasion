@@ -1,4 +1,4 @@
-package newversion
+package app
 
 import (
 	"errors"
@@ -10,38 +10,40 @@ import (
 type Alien struct {
 	Name         string
 	maxMovements int64
-	paths        chan Path
+	paths        chan []Path
 	wg           *sync.WaitGroup
 }
 
-func New(n string, maxMov int64, wg *sync.WaitGroup) Alien {
-	return Alien{
+func New(n string, maxMov int64, wg *sync.WaitGroup) *Alien {
+	return &Alien{
 		Name:         n,
 		maxMovements: maxMov,
-		paths:        make(chan Path),
+		paths:        make(chan []Path),
 		wg:           wg,
 	}
 }
 
 func (a Alien) ChoosePath(paths []Path) {
-	a.choosePath(paths)
+	a.paths <- paths
 }
 
-func (a Alien) choosePath(paths []Path) {
+func (a Alien) Start() {
 	defer a.wg.Done()
-	select {
-	case p := <-a.paths:
-		a.maxMovements++
-		if a.maxMovements > a.maxMovements {
-			return
-		}
-		p, err := chooseRandomPath(paths)
-		if err != nil {
-			log.Println(err)
-			return
-		}
+	for {
+		select {
+		case paths := <-a.paths:
+			a.maxMovements++
+			if a.maxMovements > a.maxMovements {
+				return
+			}
+			path, err := chooseRandomPath(paths)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 
-		p.OutgoingDirection <- a
+			path.OutgoingDirection <- a
+		}
 	}
 }
 
